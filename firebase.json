@@ -1,0 +1,10 @@
+{
+  "firestore": {
+    "database": "(default)",
+    "location": "eur3",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json",
+     "client_email": "firebase-adminsdk-xxxxx@app11-4839b.iam.gserviceaccount.com",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvg..."
+  }
+}

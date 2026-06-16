@@ -1,41 +1,33 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import db from "@/app/lib/db";
-import { RowDataPacket } from "mysql2";
 
 export async function POST(req: Request) {
   try {
     const { firstName, lastName, phone, email, password } = await req.json();
-
-    if (!firstName || !email || !password) {
+    if (!firstName || !email || !password)
       return NextResponse.json({ message: "firstName, email, password required" }, { status: 400 });
-    }
 
-    const [existing] = await db.query<RowDataPacket[]>(
-      "SELECT id FROM users WHERE email = ? LIMIT 1",
-      [email.trim().toLowerCase()]
-    );
-
-    if ((existing as RowDataPacket[]).length > 0) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const existing = await db.ref("users").orderByChild("email").equalTo(normalizedEmail).once("value");
+    if (existing.exists())
       return NextResponse.json({ message: "Email already exists" }, { status: 409 });
-    }
 
     const hashed = await bcrypt.hash(password, 10);
-
-    await db.query(
-      "INSERT INTO users (firstName, lastName, phone, email, password) VALUES (?, ?, ?, ?, ?)",
-      [
-        firstName.trim(),
-        lastName?.trim() || "",
-        phone?.trim() || "",
-        email.trim().toLowerCase(),
-        hashed,
-      ]
-    );
+    await db.ref("users").push({
+      firstName: firstName.trim(),
+      lastName: lastName?.trim() || "",
+      phone: phone?.trim() || "",
+      email: normalizedEmail,
+      password: hashed,
+      role: "employee",
+      resetToken: null,
+      resetTokenExpiry: null,
+      createdAt: new Date().toISOString(),
+    });
 
     return NextResponse.json({ message: "User created" }, { status: 201 });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Server error";
-    return NextResponse.json({ message }, { status: 500 });
+  } catch (err) {
+    return NextResponse.json({ message: String(err) }, { status: 500 });
   }
 }

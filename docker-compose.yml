@@ -1,42 +1,14 @@
+version: "3.8"
+
 services:
-
-  db:
-    image: mysql:8.0
-    container_name: stuffhub_db
-    restart: always
-    environment:
-      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
-      MYSQL_DATABASE: ebana_stuffhub
-      MYSQL_USER: stuffhub_user
-      MYSQL_PASSWORD: ""
-    ports:
-      - "3306:3306"
-    volumes:
-      - db_data:/var/lib/mysql
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   app:
     build: .
-    container_name: stuffhub_app
-    restart: always
     ports:
-      - "3003:3000"
+      - "3000:3000"
     environment:
-      DB_HOST: db
-      DB_USER: root
-      DB_PASSWORD: ""
-      DB_NAME: ebana_stuffhub
-      JWT_SECRET: d348e2c8437d6db45d3f6205c3a6e58bd3cc74e988f9ebe9450c64d9cae24fa93593737c3b5c8fc7459f8d7be433f27888b89e467e0150366f64772c640855b0
-      RESEND_API_KEY: re_gW6wV5hZ_EdmmBpDWnugjL3urhWrrY8B9
-      NODE_ENV: production
-    depends_on:
-      db:
-        condition: service_healthy
-
-volumes:
-  db_data:
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+      - FIREBASE_CLIENT_EMAIL=${FIREBASE_CLIENT_EMAIL}
+      - FIREBASE_PRIVATE_KEY=${FIREBASE_PRIVATE_KEY}
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
+      - JWT_SECRET=${JWT_SECRET}

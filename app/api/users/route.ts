@@ -1,15 +1,16 @@
 import { NextResponse } from "next/server";
 import db from "@/app/lib/db";
-import { RowDataPacket } from "mysql2";
 
 export async function GET() {
   try {
-    const [rows] = await db.query<RowDataPacket[]>(
-      "SELECT id, firstName, lastName, email, phone, role FROM users ORDER BY id DESC"
-    );
-    return NextResponse.json(rows);
+    const snapshot = await db.ref("users").once("value");
+    const users: any[] = [];
+    snapshot.forEach((child) => {
+      const d = child.val();
+      users.push({ id: child.key, firstName: d.firstName, lastName: d.lastName, email: d.email, phone: d.phone, role: d.role });
+    });
+    return NextResponse.json(users.reverse());
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }

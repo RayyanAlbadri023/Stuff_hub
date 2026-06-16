@@ -1,63 +1,27 @@
 import { NextResponse, NextRequest } from "next/server";
 import db from "@/app/lib/db";
-import { RowDataPacket } from "mysql2";
 
 export async function GET() {
   try {
-    let requests: RowDataPacket[] = [];
-    let vacations: RowDataPacket[] = [];
+    const [reqSnap, vacSnap] = await Promise.all([
+      db.ref("requests").once("value"),
+      db.ref("vacations").once("value"),
+    ]);
 
-    // requests table: id, name, email, type, message, status, userId, createdAt
-    try {
-      const [rows] = await db.query<RowDataPacket[]>(
-        `SELECT 
-          id,
-          userId,
-          name,
-          email,
-          type,
-          message,
-          NULL AS \`start\`,
-          NULL AS \`end\`,
-          NULL AS days,
-          status,
-          createdAt
-        FROM requests
-        ORDER BY createdAt DESC`
-      );
-      requests = rows;
-    } catch (e) {
-      console.error("requests query error:", e);
-    }
+    const requests: any[] = [];
+    reqSnap.forEach((child) => {
+      const d = child.val();
+      requests.push({ id: child.key, userId: d.userId || null, name: d.name, email: d.email, type: d.type, message: d.message || null, start: null, end: null, days: null, status: d.status, createdAt: d.createdAt });
+    });
 
-    // vacations table: id, userId, startDate, endDate, days, status, createdAt, name, email
-    try {
-      const [rows] = await db.query<RowDataPacket[]>(
-        `SELECT 
-          id,
-          userId,
-          COALESCE(name, 'Employee') AS name,
-          COALESCE(email, '') AS email,
-          'vacation' AS type,
-          NULL AS message,
-          startDate AS \`start\`,
-          endDate AS \`end\`,
-          days,
-          status,
-          createdAt
-        FROM vacations
-        ORDER BY createdAt DESC`
-      );
-      vacations = rows;
-    } catch (e) {
-      console.error("vacations query error:", e);
-    }
+    const vacations: any[] = [];
+    vacSnap.forEach((child) => {
+      const d = child.val();
+      vacations.push({ id: child.key, userId: d.userId || null, name: d.name || "Employee", email: d.email || "", type: "vacation", message: null, start: d.startDate, end: d.endDate, days: d.days, status: d.status, createdAt: d.createdAt });
+    });
 
-    const all = [...requests, ...vacations];
-
-    return NextResponse.json({ requests: all });
+    return NextResponse.json({ requests: [...requests.reverse(), ...vacations.reverse()] });
   } catch (err) {
-    console.error("GET /api/requests error:", err);
     return NextResponse.json({ message: String(err) }, { status: 500 });
   }
 }
@@ -68,23 +32,30 @@ export async function POST(req: NextRequest) {
     const { type } = body;
 
     if (type === "vacation") {
-      await db.query(
-        `INSERT INTO vacations (userId, name, email, startDate, endDate, days, status)
-         VALUES (?, ?, ?, ?, ?, ?, 'pending')`,
-        [body.userId || null, body.name || "Employee", body.email || "", body.start || null, body.end || null, body.days || null]
-      );
+      await db.ref("vacations").push({
+        userId: body.userId || null,
+        name: body.name || "Employee",
+        email: body.email || "",
+        startDate: body.start || null,
+        endDate: body.end || null,
+        days: body.days || null,
+        status: "pending",
+        createdAt: new Date().toISOString(),
+      });
     } else {
-      await db.query(
-        `INSERT INTO requests (userId, name, email, type, message, status)
-         VALUES (?, ?, ?, ?, ?, 'pending')`,
-        [body.userId || null, body.name || "Employee", body.email || "", type, body.message || ""]
-      );
+      await db.ref("requests").push({
+        userId: body.userId || null,
+        name: body.name || "Employee",
+        email: body.email || "",
+        type,
+        message: body.message || "",
+        status: "pending",
+        createdAt: new Date().toISOString(),
+      });
     }
 
     return NextResponse.json({ message: "Request submitted" }, { status: 201 });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    console.error("POST /api/requests error:", message);
-    return NextResponse.json({ message }, { status: 500 });
+  } catch (err) {
+    return NextResponse.json({ message: String(err) }, { status: 500 });
   }
 }
