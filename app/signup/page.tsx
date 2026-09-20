@@ -48,42 +48,53 @@ export default function SignupPage() {
   };
 
   return (
-    <div dir={isRTL ? "rtl" : "ltr"} className="min-h-screen flex justify-center items-center p-5 bg-gradient-to-br from-[#F5F7FF] to-[#ce908b]">
+    <div dir={isRTL ? "rtl" : "ltr"} className="min-h-screen flex justify-center items-center p-5 bg-white">
       <div className={`absolute top-4 ${isRTL ? "left-4" : "right-4"}`}><LangToggle /></div>
       {loading && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-white px-6 py-4 rounded-xl shadow-lg text-sm">{t("signingUp")}</div>
         </div>
       )}
-      <div className="relative w-full max-w-[420px] flex flex-col items-center text-center pt-[70px] px-[25px] pb-[30px] rounded-[22px] bg-white/60 backdrop-blur-xl border border-[rgba(236,81,14,0.15)] shadow-[0_20px_45px_rgba(236,81,14,0.12)]">
-        <img src="/ibana.png" className="absolute -top-[35px] left-1/2 -translate-x-1/2 w-[90px] h-[90px] rounded-full object-cover bg-white p-[6px] shadow-[0_10px_25px_rgba(236,81,14,0.25)]" />
-        <h1 className="text-[24px] mt-5 mb-1 text-[#ec510e]">{t("createAccount")}</h1>
-        <p className="text-[13px] text-gray-600 mb-5">{t("signupSubtitle")}</p>
-        {serverError && <p className="text-red-500 text-xs mb-2">{serverError}</p>}
-        <div className="w-full bg-white rounded-[12px] p-[15px] border border-[rgba(236,81,14,0.15)] flex flex-col gap-[10px]">
-          <input placeholder={t("firstName")} value={fname} onChange={(e) => setFname(e.target.value)} className="bg-[#F9FAFF] p-2 rounded border border-gray-200 text-gray-800 outline-none" />
-          {errors.fname && <p className="text-red-500 text-xs">{t("fnameError")}</p>}
-          <input placeholder={t("lastName")} value={lname} onChange={(e) => setLname(e.target.value)} className="bg-[#F9FAFF] p-2 rounded border border-gray-200 text-gray-800 outline-none" />
-          {errors.lname && <p className="text-red-500 text-xs">{t("lnameError")}</p>}
-          <div className="flex gap-2">
-            <select value={code} onChange={(e) => setCode(e.target.value)} className="w-[40%] bg-[#F9FAFF] p-2 rounded border border-gray-200 text-gray-800 outline-none">
-              <option>+968 (OM)</option><option>+966 (SA)</option><option>+971 (UAE)</option><option>+965 (KW)</option><option>+974 (QA)</option>
-            </select>
-            <input placeholder={t("phone")} value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full bg-[#F9FAFF] p-2 rounded border border-gray-200 text-gray-800 outline-none" />
+      <div className="w-full max-w-sm">
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <div className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#030405] mb-4 overflow-hidden">
+            <img src="/ibana.png" className="h-full w-full object-cover" alt="logo" />
           </div>
-          {errors.phone && <p className="text-red-500 text-xs">{t("phoneError")}</p>}
-          <input placeholder={t("emailLabel")} value={email} onChange={(e) => setEmail(e.target.value)} className="bg-[#F9FAFF] p-2 rounded border border-gray-200 text-gray-800 outline-none" />
-          {errors.email && <p className="text-red-500 text-xs">{t("emailError")}</p>}
-          <input type="password" placeholder={t("passwordLabel")} value={pass} onChange={(e) => setPass(e.target.value)} className="bg-[#F9FAFF] p-2 rounded border border-gray-200 text-gray-800 outline-none" />
-          {errors.pass && <p className="text-red-500 text-xs">{t("passError")}</p>}
-          <input type="password" placeholder={t("confirmPassword")} value={confirm} onChange={(e) => setConfirm(e.target.value)} className="bg-[#F9FAFF] p-2 rounded border border-gray-200 text-gray-800 outline-none" />
-          {errors.confirm && <p className="text-red-500 text-xs">{t("confirmError")}</p>}
+          <h1 className="text-xl font-semibold text-black tracking-tight">{t("createAccount")}</h1>
+          <p className="text-black/40 text-sm mt-1">{t("signupSubtitle")}</p>
         </div>
-        <button onClick={validateSignup} disabled={loading} className="w-full mt-3 py-3 rounded-full text-white font-semibold bg-gradient-to-r from-[#ec510e] to-[#ecbcaf]">
-          {loading ? t("signingUp") : t("signupBtn")}
-        </button>
-        <div className="mt-3 text-[11px] text-gray-600">
-          {t("alreadyAccount")}{" "}<a href="/login" className="text-[#ec510e] font-semibold">{t("loginLink")}</a>
+
+        <div className="border border-black/10 rounded-2xl p-6">
+          {serverError && (
+            <div className="bg-black/[0.03] border border-black/10 rounded-lg px-4 py-3 text-sm text-black/60 mb-4">{serverError}</div>
+          )}
+          <div className="flex flex-col gap-3">
+            <input placeholder={t("firstName")} value={fname} onChange={(e) => setFname(e.target.value)} className="p-3 rounded-lg border border-black/10 text-black outline-none focus:border-[#F33615]/50 focus:ring-2 focus:ring-[#F33615]/10 transition" />
+            {errors.fname && <p className="text-red-500 text-xs">{t("fnameError")}</p>}
+            <input placeholder={t("lastName")} value={lname} onChange={(e) => setLname(e.target.value)} className="p-3 rounded-lg border border-black/10 text-black outline-none focus:border-[#F33615]/50 focus:ring-2 focus:ring-[#F33615]/10 transition" />
+            {errors.lname && <p className="text-red-500 text-xs">{t("lnameError")}</p>}
+            <div className="flex gap-2">
+              <select value={code} onChange={(e) => setCode(e.target.value)} className="w-[40%] p-3 rounded-lg border border-black/10 text-black outline-none focus:border-[#F33615]/50">
+                <option>+968 (OM)</option><option>+966 (SA)</option><option>+971 (UAE)</option><option>+965 (KW)</option><option>+974 (QA)</option>
+              </select>
+              <input placeholder={t("phone")} value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full p-3 rounded-lg border border-black/10 text-black outline-none focus:border-[#F33615]/50 focus:ring-2 focus:ring-[#F33615]/10 transition" />
+            </div>
+            {errors.phone && <p className="text-red-500 text-xs">{t("phoneError")}</p>}
+            <input placeholder={t("emailLabel")} value={email} onChange={(e) => setEmail(e.target.value)} className="p-3 rounded-lg border border-black/10 text-black outline-none focus:border-[#F33615]/50 focus:ring-2 focus:ring-[#F33615]/10 transition" />
+            {errors.email && <p className="text-red-500 text-xs">{t("emailError")}</p>}
+            <input type="password" placeholder={t("passwordLabel")} value={pass} onChange={(e) => setPass(e.target.value)} className="p-3 rounded-lg border border-black/10 text-black outline-none focus:border-[#F33615]/50 focus:ring-2 focus:ring-[#F33615]/10 transition" />
+            {errors.pass && <p className="text-red-500 text-xs">{t("passError")}</p>}
+            <input type="password" placeholder={t("confirmPassword")} value={confirm} onChange={(e) => setConfirm(e.target.value)} className="p-3 rounded-lg border border-black/10 text-black outline-none focus:border-[#F33615]/50 focus:ring-2 focus:ring-[#F33615]/10 transition" />
+            {errors.confirm && <p className="text-red-500 text-xs">{t("confirmError")}</p>}
+          </div>
+          <button onClick={validateSignup} disabled={loading} className="w-full mt-4 py-3 rounded-full text-white font-semibold bg-[#030405] hover:bg-[#F33615] transition-colors disabled:opacity-50">
+            {loading ? t("signingUp") : t("signupBtn")}
+          </button>
+        </div>
+
+        <div className="mt-5 text-center text-[11px] text-black/50">
+          {t("alreadyAccount")}{" "}<a href="/login" className="text-[#F33615] font-semibold">{t("loginLink")}</a>
         </div>
       </div>
     </div>

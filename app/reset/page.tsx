@@ -36,21 +36,28 @@ function ResetForm() {
   };
 
   return (
-    <div dir={isRTL ? "rtl" : "ltr"} className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#F5F7FF] to-[#ce908b] p-5">
+    <div dir={isRTL ? "rtl" : "ltr"} className="min-h-screen flex items-center justify-center bg-white p-5">
       <div className={`absolute top-4 ${isRTL ? "left-4" : "right-4"}`}><LangToggle /></div>
-      <div className="w-[400px] p-8 rounded-2xl bg-white/60 backdrop-blur-xl border border-[#ec510e]/20 text-center">
-        <h1 className="text-2xl font-semibold text-[#ec510e] mb-2">{t("resetPasswordTitle")}</h1>
-        <input type="password" placeholder={t("newPassword")} value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
-          className="w-full p-3 mb-3 rounded-lg bg-white text-black border focus:outline-none focus:ring-2 focus:ring-[#ec510e]/40" />
-        <input type="password" placeholder={t("confirmNewPassword")} value={confirm} onChange={(e) => setConfirm(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && resetPassword()}
-          className="w-full p-3 mb-3 rounded-lg bg-white text-black border focus:outline-none focus:ring-2 focus:ring-[#ec510e]/40" />
-        {message && <p className={`text-sm mb-3 font-medium ${isSuccess ? "text-green-600" : "text-red-500"}`}>{message}</p>}
-        <button onClick={resetPassword} disabled={loading || isSuccess} className="w-full py-3 rounded-full text-white font-semibold bg-gradient-to-r from-[#ec510e] to-[#ecbcaf] disabled:opacity-60 transition">
-          {loading ? t("resetting") : t("resetBtn")}
-        </button>
-        <button onClick={() => router.push("/forget")} className="w-full mt-3 py-2 text-sm text-[#ec510e] hover:underline transition">{t("sendResetLink")}</button>
-        <button onClick={() => router.push("/login")} className="w-full mt-1 py-2 text-sm text-gray-500 hover:text-[#ec510e] transition underline">{t("backToLogin")}</button>
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <div className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#030405] mb-4 overflow-hidden">
+            <img src="/ibana.png" className="h-full w-full object-cover" alt="logo" />
+          </div>
+          <h1 className="text-xl font-semibold text-black tracking-tight">{t("resetPasswordTitle")}</h1>
+        </div>
+        <div className="border border-black/10 rounded-2xl p-6 text-center">
+          <input type="password" placeholder={t("newPassword")} value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
+            className="w-full p-3 mb-3 rounded-lg border border-black/10 text-black outline-none focus:border-[#F33615]/50 focus:ring-2 focus:ring-[#F33615]/10 transition" />
+          <input type="password" placeholder={t("confirmNewPassword")} value={confirm} onChange={(e) => setConfirm(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && resetPassword()}
+            className="w-full p-3 mb-3 rounded-lg border border-black/10 text-black outline-none focus:border-[#F33615]/50 focus:ring-2 focus:ring-[#F33615]/10 transition" />
+          {message && <p className={`text-sm mb-3 font-medium ${isSuccess ? "text-green-600" : "text-red-500"}`}>{message}</p>}
+          <button onClick={resetPassword} disabled={loading || isSuccess} className="w-full py-3 rounded-full text-white font-semibold bg-[#030405] hover:bg-[#F33615] disabled:opacity-50 transition-colors">
+            {loading ? t("resetting") : t("resetBtn")}
+          </button>
+          <button onClick={() => router.push("/forget")} className="w-full mt-3 py-2 text-sm text-[#F33615] hover:underline transition">{t("sendResetLink")}</button>
+          <button onClick={() => router.push("/login")} className="w-full mt-1 py-2 text-sm text-black/40 hover:text-[#F33615] transition underline">{t("backToLogin")}</button>
+        </div>
       </div>
     </div>
   );

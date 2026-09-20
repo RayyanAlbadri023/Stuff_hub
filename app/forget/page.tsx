@@ -28,31 +28,38 @@ export default function ForgetPage() {
   };
 
   return (
-    <div dir={isRTL ? "rtl" : "ltr"} className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#F5F7FF] to-[#ce908b] p-5">
+    <div dir={isRTL ? "rtl" : "ltr"} className="min-h-screen flex items-center justify-center bg-white p-5">
       <div className={`absolute top-4 ${isRTL ? "left-4" : "right-4"}`}><LangToggle /></div>
-      <div className="w-[400px] p-8 rounded-2xl bg-white/60 backdrop-blur-xl border border-[#ec510e]/20 text-center">
-        <h1 className="text-2xl font-semibold text-[#ec510e] mb-2">{t("forgotPasswordTitle")}</h1>
-        <p className="text-sm text-gray-500 mb-5">{t("forgotPasswordSubtitle")}</p>
-        {!isSuccess ? (
-          <>
-            <input type="email" placeholder={t("emailPlaceholder")} value={email} onChange={(e) => setEmail(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && sendResetLink()}
-              className="w-full p-3 mb-3 rounded-lg bg-white text-black border focus:outline-none focus:ring-2 focus:ring-[#ec510e]/40" />
-            {message && <p className="text-sm text-red-500 mb-3">{message}</p>}
-            <button onClick={sendResetLink} disabled={loading} className="w-full py-3 rounded-full text-white font-semibold bg-gradient-to-r from-[#ec510e] to-[#ecbcaf] disabled:opacity-60 transition">
-              {loading ? t("sending") : t("sendResetLink")}
-            </button>
-          </>
-        ) : (
-          <div className="bg-green-50 border border-green-200 rounded-xl p-5 mb-4">
-            <div className="text-4xl mb-2">📩</div>
-            <p className="text-green-700 font-semibold text-sm">{message}</p>
-            <p className="text-gray-500 text-xs mt-2">{t("checkInbox")}</p>
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <div className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#030405] mb-4 overflow-hidden">
+            <img src="/ibana.png" className="h-full w-full object-cover" alt="logo" />
           </div>
-        )}
-        <button onClick={() => router.push("/login")} className="w-full mt-3 py-2 text-sm text-gray-600 hover:text-[#ec510e] transition underline">
-          {t("backToLogin")}
-        </button>
+          <h1 className="text-xl font-semibold text-black tracking-tight">{t("forgotPasswordTitle")}</h1>
+          <p className="text-black/40 text-sm mt-1">{t("forgotPasswordSubtitle")}</p>
+        </div>
+        <div className="border border-black/10 rounded-2xl p-6 text-center">
+          {!isSuccess ? (
+            <>
+              <input type="email" placeholder={t("emailPlaceholder")} value={email} onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && sendResetLink()}
+                className="w-full p-3 mb-3 rounded-lg border border-black/10 text-black outline-none focus:border-[#F33615]/50 focus:ring-2 focus:ring-[#F33615]/10 transition" />
+              {message && <p className="text-sm text-red-500 mb-3">{message}</p>}
+              <button onClick={sendResetLink} disabled={loading} className="w-full py-3 rounded-full text-white font-semibold bg-[#030405] hover:bg-[#F33615] disabled:opacity-50 transition-colors">
+                {loading ? t("sending") : t("sendResetLink")}
+              </button>
+            </>
+          ) : (
+            <div className="bg-black/[0.03] border border-black/10 rounded-xl p-5 mb-4">
+              <div className="text-4xl mb-2">📩</div>
+              <p className="text-black/70 font-semibold text-sm">{message}</p>
+              <p className="text-black/40 text-xs mt-2">{t("checkInbox")}</p>
+            </div>
+          )}
+          <button onClick={() => router.push("/login")} className="w-full mt-3 py-2 text-sm text-black/50 hover:text-[#F33615] transition underline">
+            {t("backToLogin")}
+          </button>
+        </div>
       </div>
     </div>
   );

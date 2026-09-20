@@ -11,6 +11,8 @@ const PROTECTED_ROUTES: Record<string, "admin" | "employee" | null> = {
   "/suggestions":  null,
   "/resignation":  null,
   "/trainee":      null,
+  "/salary":       null,
+  "/tasks":        null,
 };
 
 // Routes that logged-in users should NOT visit

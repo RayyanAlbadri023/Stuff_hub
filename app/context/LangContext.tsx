@@ -20,6 +20,11 @@ export function LangProvider({ children }: { children: React.ReactNode }) {
     if (saved === "ar" || saved === "en") setLang(saved);
   }, []);
 
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+  }, [lang]);
+
   const toggleLang = () => {
     const next: Lang = lang === "en" ? "ar" : "en";
     setLang(next);

@@ -50,24 +50,62 @@ export default function LoginPage() {
   };
 
   return (
-    <div dir={isRTL ? "rtl" : "ltr"} className="h-screen flex items-center justify-center bg-gradient-to-br from-[#F5F7FF] to-[#ce908b]">
+    <div dir={isRTL ? "rtl" : "ltr"} className="min-h-screen flex items-center justify-center bg-white p-4">
       <div className={`absolute top-4 ${isRTL ? "left-4" : "right-4"}`}><LangToggle /></div>
-      <div className="relative w-[400px] p-8 pt-20 rounded-2xl text-center bg-white/60 backdrop-blur-xl border border-purple-200 shadow-xl">
-        <img src="/ibana.png" className="absolute -top-14 left-1/2 -translate-x-1/2 w-28 h-28 rounded-full" />
-        <h1 className="text-2xl font-semibold text-[#ec510e]">{t("welcomeBack")}</h1>
-        <p className="text-sm text-gray-500 mb-5">{t("loginSubtitle")}</p>
-        {serverError && <p className="text-red-500 text-xs mb-2">{serverError}</p>}
-        <input placeholder={t("emailPlaceholder")} className="w-full p-3 mb-2 rounded bg-white text-black" value={email} onChange={(e) => setEmail(e.target.value)} />
-        {emailError && <p className="text-red-500 text-xs">{t("invalidEmail")}</p>}
-        <input type="password" placeholder={t("passwordPlaceholder")} className="w-full p-3 mt-2 mb-2 rounded bg-white text-black" value={password} onChange={(e) => setPassword(e.target.value)} />
-        {passError && <p className="text-red-500 text-xs">{t("passwordRequired")}</p>}
-        <button onClick={validateLogin} disabled={loading} className="w-full mt-5 py-3 rounded-full text-white font-semibold bg-gradient-to-r from-[#ec510e] to-[#ecbcaf]">
-          {loading ? t("loggingIn") : t("loginBtn")}
-        </button>
-        <p onClick={() => { setEmail(ADMIN_EMAIL); setPassword("admin123"); }} className="text-[11px] text-black mt-3 cursor-pointer underline">{t("loginAsAdmin")}</p>
-        <p onClick={() => router.push("/forget")} className="text-[11px] text-[#ec510e] mt-3 cursor-pointer">{t("forgotPassword")}</p>
-        <div className="mt-4 text-[11px] text-gray-600">
-          {t("noAccount")}{" "}<span onClick={() => router.push("/signup")} className="text-[#ec510e] font-semibold cursor-pointer">{t("signupLink")}</span>
+      <div className="w-full max-w-sm">
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <div className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#030405] mb-4 overflow-hidden">
+            <img src="/ibana.png" className="h-full w-full object-cover" alt="logo" />
+          </div>
+          <h1 className="text-xl font-semibold text-black tracking-tight">{t("welcomeBack")}</h1>
+          <p className="text-black/40 text-sm mt-1">{t("loginSubtitle")}</p>
+        </div>
+
+        <div className="border border-black/10 rounded-2xl p-6">
+          {serverError && (
+            <div className="bg-black/[0.03] border border-black/10 rounded-lg px-4 py-3 text-sm text-black/60 mb-4">
+              {serverError}
+            </div>
+          )}
+
+          <div className="space-y-1.5 mb-4">
+            <label className="text-[11px] font-semibold text-black/50 uppercase tracking-wide">{t("emailPlaceholder")}</label>
+            <input
+              placeholder={t("emailPlaceholder")}
+              className="w-full p-3 rounded-lg border border-black/10 text-black outline-none focus:border-[#F33615]/50 focus:ring-2 focus:ring-[#F33615]/10 transition"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            {emailError && <p className="text-red-500 text-xs">{t("invalidEmail")}</p>}
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-semibold text-black/50 uppercase tracking-wide">{t("passwordPlaceholder")}</label>
+            <input
+              type="password"
+              placeholder={t("passwordPlaceholder")}
+              className="w-full p-3 rounded-lg border border-black/10 text-black outline-none focus:border-[#F33615]/50 focus:ring-2 focus:ring-[#F33615]/10 transition"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            {passError && <p className="text-red-500 text-xs">{t("passwordRequired")}</p>}
+          </div>
+
+          <button
+            onClick={validateLogin}
+            disabled={loading}
+            className="w-full mt-5 py-3 rounded-full text-white font-semibold bg-[#030405] hover:bg-[#F33615] transition-colors disabled:opacity-50"
+          >
+            {loading ? t("loggingIn") : t("loginBtn")}
+          </button>
+
+          <p onClick={() => { setEmail(ADMIN_EMAIL); setPassword("admin123"); }} className="text-[11px] text-black/40 mt-4 text-center cursor-pointer underline hover:text-black transition">{t("loginAsAdmin")}</p>
+          <p onClick={() => router.push("/forget")} className="text-[11px] text-[#F33615] mt-2 text-center cursor-pointer font-semibold">{t("forgotPassword")}</p>
+        </div>
+
+        <div className="mt-5 text-center text-[11px] text-black/50">
+          {t("noAccount")}{" "}<span onClick={() => router.push("/signup")} className="text-[#F33615] font-semibold cursor-pointer">{t("signupLink")}</span>
         </div>
       </div>
     </div>
