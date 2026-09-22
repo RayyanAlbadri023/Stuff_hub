@@ -183,9 +183,10 @@ export default function AdminPage() {
   const handleDownloadReport = async () => {
     setReportLoading(true);
     try {
-      const [reqData, expData] = await Promise.all([
+      const [reqData, expData, taskData] = await Promise.all([
         execute("/api/requests"),
         execute("/api/expenses"),
+        execute("/api/tasks"),
       ]);
       const requests = Array.isArray((reqData as { requests?: unknown[] } | null)?.requests)
         ? ((reqData as { requests: any[] }).requests)
@@ -193,10 +194,14 @@ export default function AdminPage() {
       const expensesList = Array.isArray((expData as { expenses?: unknown[] } | null)?.expenses)
         ? ((expData as { expenses: any[] }).expenses)
         : [];
+      const tasksList = Array.isArray((taskData as { tasks?: unknown[] } | null)?.tasks)
+        ? ((taskData as { tasks: any[] }).tasks)
+        : [];
       await downloadMonthlyReport({
         omanizationStats,
         requests,
         expenses: expensesList,
+        tasks: tasksList,
         companyLabel: omanization.sectorLabel || undefined,
       });
     } finally {
