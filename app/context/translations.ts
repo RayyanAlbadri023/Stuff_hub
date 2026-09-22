@@ -478,9 +478,9 @@ export const translations = {
     homeBtn: "الرئيسية →",
 
     // ── Employee dashboard cards ────────────────────────────────────────────
-    mySalaryTitle: "راتبي",
+    mySalaryTitle: "الأجور",
     mySalaryDesc: "اطّلع على تفاصيل راتبك ورصيد إجازاتك.",
-    myTasksTitle: "مهامي",
+    myTasksTitle: "المهام",
     myTasksDesc: "اطّلع على المهام المسندة لك من مديرك.",
     requestVacationDesc: "قدّم طلب إجازة جديد.",
     applianceDesc: "أرسل تظلمًا لمديرك.",
@@ -599,7 +599,7 @@ export const translations = {
     viewContract: "عرض العقد",
     downloadContract: "تحميل",
     noContract: "لم يتم رفع عقد بعد",
-    myContractTitle: "عقدي",
+    myContractTitle: "عقد العمل",
     myContractDesc: "عرض تفاصيل عقد عملك",
     employeeProfileTitle: "ملف الموظف",
     personalInfo: "المعلومات الشخصية",
