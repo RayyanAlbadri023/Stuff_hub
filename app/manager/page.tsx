@@ -55,9 +55,9 @@ const DOC_STATUS_COLORS: Record<DocStatus, string> = {
 
 const ITEMS_PER_PAGE = 5;
 
-export default function AdminPage() {
+export default function ManagerPage() {
   const router = useRouter();
-  const { loading: authLoading, logout } = useAuth({ requiredRole: "admin" });
+  const { loading: authLoading, logout } = useAuth({ requiredRole: "manager" });
   const { execute } = useRequest();
   const { t, isRTL } = useLang();
 
@@ -256,7 +256,7 @@ export default function AdminPage() {
 
         {/* HEADER */}
         <div className="flex flex-wrap items-center justify-between gap-3 bg-[#030405] rounded-2xl p-4 shadow-sm">
-          <h1 className="text-2xl sm:text-3xl font-bold text-white flex items-center gap-2">⚡ {t("adminPanel")}</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white flex items-center gap-2">{t("managerPanel")}</h1>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <button onClick={handleDownloadReport} disabled={reportLoading} className="px-3 sm:px-4 py-2 text-sm rounded-lg bg-white/10 text-white font-semibold border border-white/20 hover:bg-[#F33615] hover:border-[#F33615] transition disabled:opacity-60">
               📄 {reportLoading ? t("sending") : t("monthlyReport")}
@@ -320,7 +320,7 @@ export default function AdminPage() {
                         <p className="font-medium text-black break-words">{u.firstName} {u.lastName}</p>
                         <p className="text-sm text-gray-500 break-words">{u.email}</p>
                         {u.phone && <p className="text-xs text-gray-400">{u.phone}</p>}
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${u.role === "admin" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${u.role === "admin" ? "bg-purple-100 text-purple-700" : u.role === "manager" ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"}`}>
                           {u.role ?? "employee"}
                         </span>
                         {!!u.baseSalary && (

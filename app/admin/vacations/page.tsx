@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/app/hooks/useAuth";
+import { useAuth, ADMIN_OR_MANAGER } from "@/app/hooks/useAuth";
 import { useRequest } from "@/app/hooks/useRequest";
 import { useLang } from "@/app/context/LangContext";
 import LangToggle from "@/app/components/LangToggle";
@@ -46,7 +46,7 @@ const TYPE_ACCENT: Record<RequestType, string> = {
 
 export default function AdminVacationsPage() {
   const router = useRouter();
-  const { loading: authLoading, logout } = useAuth({ requiredRole: "admin" });
+  const { user, loading: authLoading, logout } = useAuth({ requiredRole: ADMIN_OR_MANAGER });
   const { execute } = useRequest();
   const { t, isRTL } = useLang();
 
@@ -118,7 +118,7 @@ export default function AdminVacationsPage() {
 
         {/* HEADER */}
         <div className="flex flex-wrap items-center justify-between gap-3 bg-[#030405] rounded-2xl p-4 shadow-sm">
-          <button onClick={() => router.push("/admin")} className="px-3 sm:px-4 py-2 text-sm text-white rounded-full bg-gradient-to-r from-[#F33615] to-[#ff6b4a]">
+          <button onClick={() => router.push(user?.role === "manager" ? "/manager" : "/admin")} className="px-3 sm:px-4 py-2 text-sm text-white rounded-full bg-gradient-to-r from-[#F33615] to-[#ff6b4a]">
             {t("backToDashboard")}
           </button>
           <h1 className="text-xl sm:text-2xl font-bold text-white order-last sm:order-none w-full sm:w-auto text-center">{t("vacationsPageTitle")}</h1>

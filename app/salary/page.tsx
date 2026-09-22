@@ -15,6 +15,7 @@ interface SalaryData {
   allowance: number;
   phoneAllowance: number;
   transportationAllowance: number;
+  otherAllowance: number;
   nationality?: Nationality;
   insuranceNumber?: string;
   joinDate?: string;
@@ -68,6 +69,7 @@ export default function SalaryPage() {
           allowance: s.allowance ?? 0,
           phoneAllowance: s.phoneAllowance ?? 0,
           transportationAllowance: s.transportationAllowance ?? 0,
+          otherAllowance: s.otherAllowance ?? 0,
           nationality: s.nationality ?? "omani",
           insuranceNumber: s.insuranceNumber ?? "",
           joinDate: s.joinDate ?? "",
@@ -92,7 +94,7 @@ export default function SalaryPage() {
   if (authLoading) return null;
 
   const total = salary
-    ? salary.baseSalary + salary.allowance + salary.phoneAllowance + salary.transportationAllowance
+    ? salary.baseSalary + salary.allowance + salary.phoneAllowance + salary.transportationAllowance + salary.otherAllowance
     : 0;
 
   const insurance = salary
@@ -138,6 +140,7 @@ export default function SalaryPage() {
                       <th className="text-start py-2">{t("allowance")}</th>
                       <th className="text-start py-2">{t("phoneAllowance")}</th>
                       <th className="text-start py-2">{t("transportationAllowance")}</th>
+                      <th className="text-start py-2">{t("otherAllowance")}</th>
                       <th className="text-start py-2 font-bold">{t("totalSalary")}</th>
                     </tr>
                   </thead>
@@ -147,6 +150,7 @@ export default function SalaryPage() {
                       <td className="py-3">{salary?.allowance.toFixed(2) ?? "—"}</td>
                       <td className="py-3">{salary?.phoneAllowance.toFixed(2) ?? "—"}</td>
                       <td className="py-3">{salary?.transportationAllowance.toFixed(2) ?? "—"}</td>
+                      <td className="py-3">{salary?.otherAllowance.toFixed(2) ?? "—"}</td>
                       <td className="py-3 font-bold text-[#F33615]">{total.toFixed(2)}</td>
                     </tr>
                   </tbody>

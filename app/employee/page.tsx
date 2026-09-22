@@ -14,6 +14,8 @@ export default function EmployeeDashboard() {
 
   const cards = [
     { label: t("mySalaryTitle"),   desc: t("mySalaryDesc"),   icon: "💰", path: "/salary" },
+    { label: t("myContractTitle"), desc: t("myContractDesc"), icon: "📄", path: "/contract" },
+    { label: t("myDocumentsTitle"), desc: t("myDocumentsDesc"), icon: "🛂", path: "/documents" },
     { label: t("myTasksTitle"),    desc: t("myTasksDesc"),    icon: "🗂️", path: "/tasks" },
     { label: t("requestVacation"), desc: t("requestVacationDesc"), icon: "🏖️", path: "/veccation" },
     { label: t("appliance"),       desc: t("applianceDesc"),  icon: "📣", path: "/appeal" },

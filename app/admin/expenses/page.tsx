@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/app/hooks/useAuth";
+import { useAuth, ADMIN_OR_MANAGER } from "@/app/hooks/useAuth";
 import { useRequest } from "@/app/hooks/useRequest";
 import { useLang } from "@/app/context/LangContext";
 import LangToggle from "@/app/components/LangToggle";
+import { exportToExcel } from "@/app/lib/excelUtils";
 
 interface ExpenseItem {
   id: string;
@@ -26,7 +27,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function AdminExpensesPage() {
   const router = useRouter();
-  const { loading: authLoading, logout } = useAuth({ requiredRole: "admin" });
+  const { user, loading: authLoading, logout } = useAuth({ requiredRole: ADMIN_OR_MANAGER });
   const { execute } = useRequest();
   const { t, isRTL } = useLang();
 
@@ -77,6 +78,17 @@ export default function AdminExpensesPage() {
   const rejectedCount = expenses.filter((e) => e.status === "rejected").length;
   const totalApprovedAmount = expenses.filter((e) => e.status === "approved").reduce((sum, e) => sum + e.amount, 0);
 
+  const handleExportExpenses = () => {
+    exportToExcel("expenses", "Expenses", filtered.map((ex) => ({
+      Employee: ex.name,
+      Email: ex.email,
+      Amount: ex.amount,
+      Description: ex.description,
+      Status: ex.status,
+      "Created At": ex.createdAt ? new Date(ex.createdAt).toLocaleString() : "",
+    })));
+  };
+
   if (authLoading) return null;
 
   return (
@@ -85,10 +97,10 @@ export default function AdminExpensesPage() {
 
         {/* HEADER */}
         <div className="flex flex-wrap items-center justify-between gap-3 bg-[#030405] rounded-2xl p-4 shadow-sm">
-          <button onClick={() => router.push("/admin")} className="px-3 sm:px-4 py-2 text-sm text-white rounded-full bg-gradient-to-r from-[#F33615] to-[#ff6b4a]">
+          <button onClick={() => router.push(user?.role === "manager" ? "/manager" : "/admin")} className="px-3 sm:px-4 py-2 text-sm text-white rounded-full bg-gradient-to-r from-[#F33615] to-[#ff6b4a]">
             {t("backToDashboard")}
           </button>
-          <h1 className="text-xl sm:text-2xl font-bold text-white order-last sm:order-none w-full sm:w-auto text-center flex items-center justify-center gap-2">🧾 {t("navExpenses")}</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-white order-last sm:order-none w-full sm:w-auto text-center">{t("expensesPageTitle")}</h1>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             {pendingCount > 0 && <span className="bg-red-500 text-white text-sm font-bold px-3 py-1 rounded-full">{pendingCount} {t("pending")}</span>}
             <LangToggle dark />
@@ -106,7 +118,12 @@ export default function AdminExpensesPage() {
 
         {!dataLoading && (
           <div className="bg-gray-50 p-5 rounded-xl border border-gray-200">
-            <h2 className="font-bold text-[#F33615] text-lg mb-4 flex items-center gap-2">🧾 {t("expensesPageTitle")} <span className="text-gray-400 font-normal text-sm">({filtered.length})</span></h2>
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <h2 className="font-bold text-[#F33615] text-lg flex items-center gap-2">🧾 {t("expensesPageTitle")} <span className="text-gray-400 font-normal text-sm">({filtered.length})</span></h2>
+              <button onClick={handleExportExpenses} className="px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-gray-600 text-xs font-semibold hover:border-[#F33615] hover:text-[#F33615] transition">
+                📤 {t("exportExcel")}
+              </button>
+            </div>
 
             {/* STATUS OVERVIEW */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">

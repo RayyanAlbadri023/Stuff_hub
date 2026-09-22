@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/app/hooks/useAuth";
+import { useAuth, ADMIN_OR_MANAGER } from "@/app/hooks/useAuth";
 import { useRequest } from "@/app/hooks/useRequest";
 import { useLang } from "@/app/context/LangContext";
 import LangToggle from "@/app/components/LangToggle";
@@ -14,6 +14,7 @@ import {
   type Nationality,
 } from "@/app/lib/socialInsurance";
 import { computeGratuity, DEFAULT_GRATUITY_SETTINGS, type GratuitySettings } from "@/app/lib/gratuity";
+import { exportToExcel } from "@/app/lib/excelUtils";
 
 interface User {
   id: number;
@@ -24,6 +25,7 @@ interface User {
   allowance?: number;
   phoneAllowance?: number;
   transportationAllowance?: number;
+  otherAllowance?: number;
   nationality?: Nationality;
   joinDate?: string;
 }
@@ -40,7 +42,7 @@ const RATE_LABEL_KEYS: Record<(typeof SOCIAL_INSURANCE_RATE_KEYS)[number], "rate
 
 export default function AdminSalariesPage() {
   const router = useRouter();
-  const { loading: authLoading, logout } = useAuth({ requiredRole: "admin" });
+  const { user, loading: authLoading, logout } = useAuth({ requiredRole: ADMIN_OR_MANAGER });
   const { execute } = useRequest();
   const { t, isRTL } = useLang();
 
@@ -118,7 +120,22 @@ export default function AdminSalariesPage() {
   }));
   const totalAccruedLiability = gratuityRows.reduce((sum, r) => sum + r.breakdown.totalAmount, 0);
 
-  const totalMonthlyPayroll = users.reduce((sum, u) => sum + (u.baseSalary ?? 0) + (u.allowance ?? 0) + (u.phoneAllowance ?? 0) + (u.transportationAllowance ?? 0), 0);
+  const totalMonthlyPayroll = users.reduce((sum, u) => sum + (u.baseSalary ?? 0) + (u.allowance ?? 0) + (u.phoneAllowance ?? 0) + (u.transportationAllowance ?? 0) + (u.otherAllowance ?? 0), 0);
+
+  const handleExportSalaries = () => {
+    exportToExcel("salaries", "Salaries", users.map((u) => {
+      const total = (u.baseSalary ?? 0) + (u.allowance ?? 0) + (u.phoneAllowance ?? 0) + (u.transportationAllowance ?? 0) + (u.otherAllowance ?? 0);
+      return {
+        Employee: `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim(),
+        "Base Salary": u.baseSalary ?? 0,
+        Allowance: u.allowance ?? 0,
+        "Phone Allowance": u.phoneAllowance ?? 0,
+        "Transportation Allowance": u.transportationAllowance ?? 0,
+        "Other Allowance": u.otherAllowance ?? 0,
+        "Total Salary": total,
+      };
+    }));
+  };
 
   if (authLoading) return null;
 
@@ -128,7 +145,7 @@ export default function AdminSalariesPage() {
 
         {/* HEADER */}
         <div className="flex flex-wrap items-center justify-between gap-3 bg-[#030405] rounded-2xl p-4 shadow-sm">
-          <button onClick={() => router.push("/admin")} className="px-3 sm:px-4 py-2 text-sm text-white rounded-full bg-gradient-to-r from-[#F33615] to-[#ff6b4a]">
+          <button onClick={() => router.push(user?.role === "manager" ? "/manager" : "/admin")} className="px-3 sm:px-4 py-2 text-sm text-white rounded-full bg-gradient-to-r from-[#F33615] to-[#ff6b4a]">
             {t("backToDashboard")}
           </button>
           <h1 className="text-xl sm:text-2xl font-bold text-white order-last sm:order-none w-full sm:w-auto text-center">{t("salariesPageTitle")}</h1>
@@ -150,7 +167,12 @@ export default function AdminSalariesPage() {
           <>
             {/* PAYROLL SUMMARY */}
             <div className="bg-gray-50 p-5 rounded-xl border border-gray-200">
-              <h2 className="font-bold mb-3 text-[#F33615] text-lg">💵 {t("salaryBreakdown")}</h2>
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                <h2 className="font-bold text-[#F33615] text-lg">💵 {t("salaryBreakdown")}</h2>
+                <button onClick={handleExportSalaries} className="px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-gray-600 text-xs font-semibold hover:border-[#F33615] hover:text-[#F33615] transition">
+                  📤 {t("exportExcel")}
+                </button>
+              </div>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
                 <div className="bg-white rounded-xl p-3 text-center border border-gray-200">
                   <p className="text-xs text-gray-500 mb-1">{t("users")}</p>
@@ -174,15 +196,16 @@ export default function AdminSalariesPage() {
                       <th className="text-start py-2 px-3">{t("allowance")}</th>
                       <th className="text-start py-2 px-3">{t("phoneAllowance")}</th>
                       <th className="text-start py-2 px-3">{t("transportationAllowance")}</th>
+                      <th className="text-start py-2 px-3">{t("otherAllowance")}</th>
                       <th className="text-start py-2 px-3 font-bold">{t("totalSalary")}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {users.length === 0 ? (
-                      <tr><td colSpan={6} className="text-center text-gray-500 py-6">{t("noUsers")}</td></tr>
+                      <tr><td colSpan={7} className="text-center text-gray-500 py-6">{t("noUsers")}</td></tr>
                     ) : (
                       users.map((u) => {
-                        const total = (u.baseSalary ?? 0) + (u.allowance ?? 0) + (u.phoneAllowance ?? 0) + (u.transportationAllowance ?? 0);
+                        const total = (u.baseSalary ?? 0) + (u.allowance ?? 0) + (u.phoneAllowance ?? 0) + (u.transportationAllowance ?? 0) + (u.otherAllowance ?? 0);
                         return (
                           <tr key={u.id} className="border-b border-gray-100">
                             <td className="py-2 px-3 text-black">{u.firstName} {u.lastName}</td>
@@ -190,6 +213,7 @@ export default function AdminSalariesPage() {
                             <td className="py-2 px-3 text-black">{(u.allowance ?? 0).toFixed(2)}</td>
                             <td className="py-2 px-3 text-black">{(u.phoneAllowance ?? 0).toFixed(2)}</td>
                             <td className="py-2 px-3 text-black">{(u.transportationAllowance ?? 0).toFixed(2)}</td>
+                            <td className="py-2 px-3 text-black">{(u.otherAllowance ?? 0).toFixed(2)}</td>
                             <td className="py-2 px-3 font-bold text-[#F33615]">{total.toFixed(2)}</td>
                           </tr>
                         );

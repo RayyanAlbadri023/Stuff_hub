@@ -16,7 +16,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { t, isRTL } = useLang();
 
-  const ADMIN_EMAIL = "admin@ibana.com";
+  const ADMIN_EMAIL = "admin@ebanah.com";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -43,7 +43,9 @@ export default function LoginPage() {
       const role = data.user.role;
       localStorage.setItem("role", role);
       localStorage.setItem("token", "temp-token");
-      if (role === "admin") { window.location.href = "/admin"; } else { window.location.href = "/home"; }
+      if (role === "admin") { window.location.href = "/admin"; }
+      else if (role === "manager") { window.location.href = "/manager"; }
+      else { window.location.href = "/home"; }
     } catch (err) {
       setServerError(err instanceof Error ? err.message : "Something went wrong");
     } finally { setLoading(false); }

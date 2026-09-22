@@ -11,9 +11,17 @@ export type AuthUser = {
   role?: string;
 };
 
+type Role = "admin" | "employee" | "manager";
+
+// Stable array reference for pages that allow both admins and managers.
+// Importing this (instead of writing an inline `["admin", "manager"]`
+// literal at the call site) avoids ever creating a new array on every
+// render, on top of the JSON.stringify safeguard in the effect below.
+export const ADMIN_OR_MANAGER: Role[] = ["admin", "manager"];
+
 type UseAuthOptions = {
-  /** Required role. If omitted, any authenticated user is allowed. */
-  requiredRole?: "admin" | "employee";
+  /** Required role(s). If omitted, any authenticated user is allowed. */
+  requiredRole?: Role | Role[];
   /** Where to redirect if the check fails. Defaults to "/login". */
   redirectTo?: string;
 };
@@ -58,10 +66,13 @@ export function useAuth(options: UseAuthOptions = {}): UseAuthReturn {
         return;
       }
 
-      if (requiredRole && parsed.role !== requiredRole) {
-        setLoading(false);
-        router.replace(redirectTo);
-        return;
+      if (requiredRole) {
+        const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+        if (!allowedRoles.includes(parsed.role as Role)) {
+          setLoading(false);
+          router.replace(redirectTo);
+          return;
+        }
       }
 
       setUser(parsed);
@@ -71,7 +82,12 @@ export function useAuth(options: UseAuthOptions = {}): UseAuthReturn {
     return () => {
       cancelled = true;
     };
-  }, [router, requiredRole, redirectTo]);
+    // requiredRole is compared by value (JSON.stringify) instead of by
+    // reference, because passing it as an inline array literal (e.g.
+    // requiredRole: ["admin", "manager"]) creates a new array on every
+    // render, which would otherwise re-trigger this effect endlessly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router, redirectTo, JSON.stringify(requiredRole)]);
 
   const logout = () => {
     localStorage.clear();

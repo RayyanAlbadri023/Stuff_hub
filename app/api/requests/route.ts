@@ -1,5 +1,6 @@
 import { NextResponse, NextRequest } from "next/server";
 import db from "@/app/lib/db";
+import { computeVacationBalance, type VacationRecord } from "@/app/lib/vacationBalance";
 
 export async function GET() {
   try {
@@ -32,13 +33,40 @@ export async function POST(req: NextRequest) {
     const { type } = body;
 
     if (type === "vacation") {
+      const requestedDays = Number(body.days) || 0;
+      const email = body.email || "";
+
+      if (requestedDays <= 0 || !body.start || !body.end) {
+        return NextResponse.json({ message: "Invalid vacation request" }, { status: 400 });
+      }
+
+      // Re-check the 30-day/year balance (with carry-forward) server-side
+      // so the limit can't be bypassed by calling the API directly.
+      if (email) {
+        const vacSnap = await db.ref("vacations").once("value");
+        const existing: VacationRecord[] = [];
+        vacSnap.forEach((child) => {
+          const d = child.val();
+          if (d.email === email) {
+            existing.push({ startDate: d.startDate, status: d.status, days: d.days });
+          }
+        });
+        const { remaining } = computeVacationBalance(existing);
+        if (requestedDays > remaining) {
+          return NextResponse.json(
+            { message: `Exceeds remaining vacation balance (${remaining} day(s) left)` },
+            { status: 400 }
+          );
+        }
+      }
+
       await db.ref("vacations").push({
         userId: body.userId || null,
         name: body.name || "Employee",
-        email: body.email || "",
+        email,
         startDate: body.start || null,
         endDate: body.end || null,
-        days: body.days || null,
+        days: requestedDays,
         status: "pending",
         createdAt: new Date().toISOString(),
       });
