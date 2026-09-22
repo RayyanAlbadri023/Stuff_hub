@@ -13,15 +13,15 @@ export default function EmployeeDashboard() {
   if (loading) return null;
 
   const cards = [
-    { label: t("mySalaryTitle"),   desc: t("mySalaryDesc"),   icon: "💰", path: "/salary" },
-    { label: t("myContractTitle"), desc: t("myContractDesc"), icon: "📄", path: "/contract" },
-    { label: t("myDocumentsTitle"), desc: t("myDocumentsDesc"), icon: "🛂", path: "/documents" },
-    { label: t("myTasksTitle"),    desc: t("myTasksDesc"),    icon: "🗂️", path: "/tasks" },
-    { label: t("requestVacation"), desc: t("requestVacationDesc"), icon: "🏖️", path: "/veccation" },
-    { label: t("appliance"),       desc: t("applianceDesc"),  icon: "📣", path: "/appeal" },
-    { label: t("suggestions"),     desc: t("suggestionsDesc"),icon: "💡", path: "/suggestions" },
-    { label: t("resignation"),     desc: t("resignationDesc"),icon: "🚪", path: "/resignation" },
-    { label: t("expensesCardTitle"), desc: t("expensesCardDesc"), icon: "🧾", path: "/expenses" },
+    { label: t("mySalaryTitle"),   desc: t("mySalaryDesc"),   path: "/salary" },
+    { label: t("myContractTitle"), desc: t("myContractDesc"), path: "/contract" },
+    { label: t("myDocumentsTitle"), desc: t("myDocumentsDesc"), path: "/documents" },
+    { label: t("myTasksTitle"),    desc: t("myTasksDesc"),    path: "/tasks" },
+    { label: t("requestVacation"), desc: t("requestVacationDesc"), path: "/veccation" },
+    { label: t("appliance"),       desc: t("applianceDesc"),  path: "/appeal" },
+    { label: t("suggestions"),     desc: t("suggestionsDesc"), path: "/suggestions" },
+    { label: t("resignation"),     desc: t("resignationDesc"), path: "/resignation" },
+    { label: t("expensesCardTitle"), desc: t("expensesCardDesc"), path: "/expenses" },
   ];
 
   return (
@@ -44,13 +44,12 @@ export default function EmployeeDashboard() {
 
         {/* CARDS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {cards.map(({ label, desc, icon, path }) => (
+          {cards.map(({ label, desc, path }) => (
             <button
               key={path}
               onClick={() => router.push(path)}
               className="text-start bg-white border border-gray-200 rounded-2xl p-5 hover:shadow-md hover:-translate-y-0.5 transition-all shadow-sm"
             >
-              <div className="text-3xl mb-2">{icon}</div>
               <h3 className="font-bold text-[#F33615] mb-1">{label}</h3>
               <p className="text-sm text-gray-600">{desc}</p>
             </button>

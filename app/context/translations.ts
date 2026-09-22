@@ -472,8 +472,8 @@ export const translations = {
     finalSalary: "الراتب النهائي:",
     requestVacation: "طلب إجازة",
     appliance: "تظلم",
-    suggestions: "مقترحات",
-    resignation: "استقالة",
+    suggestions: "المقترحات",
+    resignation: "طلب استقالة",
     backToDashboard: "العودة للوحة التحكم",
     homeBtn: "الرئيسية →",
 
