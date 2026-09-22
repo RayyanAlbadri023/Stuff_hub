@@ -7,6 +7,7 @@ import { useRequest } from "@/app/hooks/useRequest";
 import { useLang } from "@/app/context/LangContext";
 import LangToggle from "@/app/components/LangToggle";
 import { type Nationality } from "@/app/lib/socialInsurance";
+import { computeVacationBalance, type VacationRecord } from "@/app/lib/vacationBalance";
 
 const COUNTRIES: { value: string; ar: string; en: string }[] = [
   { value: "oman", ar: "عماني", en: "Omani" },
@@ -83,6 +84,7 @@ function EmployeeProfile() {
   const certifiedCvInputRef = useRef<HTMLInputElement>(null);
 
   const [employee, setEmployee] = useState<EmployeeDetail | null>(null);
+  const [vacationHistory, setVacationHistory] = useState<VacationRecord[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState("");
@@ -93,15 +95,28 @@ function EmployeeProfile() {
     let cancelled = false;
     async function load() {
       setDataLoading(true);
-      const res = await execute(`/api/users/${id}`);
+      const [empRes, reqRes] = await Promise.all([
+        execute(`/api/users/${id}`),
+        execute(`/api/requests`),
+      ]);
       if (cancelled) return;
-      if (res && typeof res === "object") setEmployee(res as EmployeeDetail);
+      if (empRes && typeof empRes === "object") {
+        const emp = empRes as EmployeeDetail;
+        setEmployee(emp);
+        const allRequests = (reqRes as { requests?: any[] })?.requests ?? [];
+        const mine = allRequests
+          .filter((r) => r.type === "vacation" && r.email === emp.email)
+          .map((r) => ({ startDate: r.start, status: r.status, days: r.days } as VacationRecord));
+        setVacationHistory(mine);
+      }
       setDataLoading(false);
     }
     load();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, id]);
+
+  const vacationBalance = computeVacationBalance(vacationHistory);
 
   if (authLoading) return null;
 
