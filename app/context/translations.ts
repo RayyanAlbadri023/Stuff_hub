@@ -292,6 +292,19 @@ export const translations = {
     appealSuccess: "Appeal sent successfully ✅",
     appealEmpty: "Please write your appeal",
 
+    // ── Absence Excuse ──────────────────────────────────────────────────────
+    excuseCardTitle: "Absence Excuse",
+    excuseCardDesc: "Explain an absence and attach supporting documents.",
+    excuseTitle: "Submit an Absence Excuse",
+    excuseDate: "Absence Date",
+    excuseReasonPlaceholder: "Explain the reason for your absence...",
+    excuseAttachment: "Attach Supporting Document",
+    sendExcuse: "Submit Excuse",
+    excuseSuccess: "Excuse submitted successfully ✅",
+    excuseEmpty: "Please write a reason and attach a supporting document",
+    excuseDateRequired: "Please select the absence date",
+    viewAttachment: "View Attachment",
+
     // ── Suggestions ─────────────────────────────────────────────────────────
     suggestionsTitle: "Send Suggestion to Manager",
     suggestionsPlaceholder: "Write your suggestion here...",
@@ -365,6 +378,7 @@ export const translations = {
     vacation: "🏖️ Vacation",
     suggestion: "💡 Suggestion",
     appeal: "📣 Appeal",
+    excuse: "📝 Excuse",
     resignationLabel: "🚪 Resignation",
     page: "Page",
     of: "of",
@@ -667,6 +681,19 @@ export const translations = {
     appealSuccess: "تم إرسال التظلم بنجاح ✅",
     appealEmpty: "يرجى كتابة تظلمك",
 
+    // ── Absence Excuse ──────────────────────────────────────────────────────
+    excuseCardTitle: "عذر غياب",
+    excuseCardDesc: "اشرح سبب غيابك وأرفق مستند إثبات.",
+    excuseTitle: "تقديم عذر غياب",
+    excuseDate: "تاريخ الغياب",
+    excuseReasonPlaceholder: "اشرح سبب غيابك هنا...",
+    excuseAttachment: "إرفاق مستند إثبات",
+    sendExcuse: "إرسال العذر",
+    excuseSuccess: "تم إرسال العذر بنجاح ✅",
+    excuseEmpty: "يرجى كتابة السبب وإرفاق مستند إثبات",
+    excuseDateRequired: "يرجى تحديد تاريخ الغياب",
+    viewAttachment: "عرض المرفق",
+
     // ── Suggestions ─────────────────────────────────────────────────────────
     suggestionsTitle: "إرسال مقترح للمدير",
     suggestionsPlaceholder: "اكتب مقترحك هنا...",
@@ -740,6 +767,7 @@ export const translations = {
     vacation: "🏖️ إجازة",
     suggestion: "💡 مقترح",
     appeal: "📣 تظلم",
+    excuse: "📝 عذر غياب",
     resignationLabel: "🚪 استقالة",
     page: "صفحة",
     of: "من",

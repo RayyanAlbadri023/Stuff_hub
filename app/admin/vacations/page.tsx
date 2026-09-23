@@ -9,13 +9,15 @@ import LangToggle from "@/app/components/LangToggle";
 
 interface RequestItem {
   id: number;
-  type: "vacation" | "suggestion" | "appeal" | "resignation";
+  type: "vacation" | "suggestion" | "appeal" | "excuse" | "resignation";
   name: string;
   email: string;
   message?: string;
   start?: string;
   end?: string;
   days?: number;
+  attachment?: string;
+  attachmentName?: string;
   status: "pending" | "approved" | "rejected";
   createdAt: string;
 }
@@ -34,6 +36,7 @@ const TYPE_ICONS: Record<RequestType, string> = {
   vacation: "🏖️",
   suggestion: "💡",
   appeal: "📣",
+  excuse: "📝",
   resignation: "🚪",
 };
 
@@ -41,6 +44,7 @@ const TYPE_ACCENT: Record<RequestType, string> = {
   vacation: "bg-[#F33615]",
   suggestion: "bg-[#DBFA00]",
   appeal: "bg-blue-500",
+  excuse: "bg-purple-500",
   resignation: "bg-gray-800",
 };
 
@@ -95,6 +99,7 @@ export default function AdminVacationsPage() {
     vacation: t("vacation"),
     suggestion: t("suggestion"),
     appeal: t("appeal"),
+    excuse: t("excuse"),
     resignation: t("resignationLabel"),
   };
 
@@ -162,7 +167,7 @@ export default function AdminVacationsPage() {
             {/* FILTERS */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-5 bg-white border border-gray-200 rounded-xl p-2">
               <div className="flex flex-wrap gap-1.5">
-                {(["all", "vacation", "suggestion", "appeal", "resignation"] as const).map((type) => (
+                {(["all", "vacation", "suggestion", "appeal", "excuse", "resignation"] as const).map((type) => (
                   <button key={type} onClick={() => setFilterType(type)} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${filterType === type ? "bg-[#030405] text-white" : "text-gray-600 hover:bg-gray-100"}`}>
                     {type === "all" ? t("all") : `${TYPE_ICONS[type]} ${TYPE_LABELS[type]}`}
                   </button>
@@ -201,7 +206,15 @@ export default function AdminVacationsPage() {
                           {r.type === "vacation" && (r.start ?? r.end) && (
                             <p className="text-xs text-gray-600 mt-1.5">📅 {r.start} → {r.end}{r.days != null ? ` · ${r.days} ${t("days")}` : ""}</p>
                           )}
+                          {r.type === "excuse" && r.start && (
+                            <p className="text-xs text-gray-600 mt-1.5">📅 {r.start}</p>
+                          )}
                           {r.message && <p className="text-sm text-gray-700 mt-2 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 italic">&ldquo;{r.message}&rdquo;</p>}
+                          {r.attachment && (
+                            <a href={r.attachment} download={r.attachmentName || "attachment"} className="text-xs text-[#F33615] underline mt-1.5 inline-block">
+                              📎 {r.attachmentName || t("viewAttachment")}
+                            </a>
+                          )}
                           <p className="text-[11px] text-gray-400 mt-2">{r.createdAt ? new Date(r.createdAt).toLocaleString() : ""}</p>
                         </div>
                       </div>

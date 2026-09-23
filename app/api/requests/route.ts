@@ -12,7 +12,7 @@ export async function GET() {
     const requests: any[] = [];
     reqSnap.forEach((child) => {
       const d = child.val();
-      requests.push({ id: child.key, userId: d.userId || null, name: d.name, email: d.email, type: d.type, message: d.message || null, start: null, end: null, days: null, status: d.status, createdAt: d.createdAt });
+      requests.push({ id: child.key, userId: d.userId || null, name: d.name, email: d.email, type: d.type, message: d.message || null, start: d.start || null, end: null, days: null, status: d.status, createdAt: d.createdAt, attachment: d.attachment || null, attachmentName: d.attachmentName || null });
     });
 
     const vacations: any[] = [];
@@ -67,6 +67,22 @@ export async function POST(req: NextRequest) {
         startDate: body.start || null,
         endDate: body.end || null,
         days: requestedDays,
+        status: "pending",
+        createdAt: new Date().toISOString(),
+      });
+    } else if (type === "excuse") {
+      if (!body.message || !String(body.message).trim() || !body.attachment) {
+        return NextResponse.json({ message: "Reason and attachment are required" }, { status: 400 });
+      }
+      await db.ref("requests").push({
+        userId: body.userId || null,
+        name: body.name || "Employee",
+        email: body.email || "",
+        type,
+        message: body.message || "",
+        start: body.start || "",
+        attachment: body.attachment,
+        attachmentName: body.attachmentName || "",
         status: "pending",
         createdAt: new Date().toISOString(),
       });

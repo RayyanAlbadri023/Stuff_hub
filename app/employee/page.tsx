@@ -19,6 +19,7 @@ export default function EmployeeDashboard() {
     { label: t("myTasksTitle"),    desc: t("myTasksDesc"),    path: "/tasks" },
     { label: t("requestVacation"), desc: t("requestVacationDesc"), path: "/veccation" },
     { label: t("appliance"),       desc: t("applianceDesc"),  path: "/appeal" },
+    { label: t("excuseCardTitle"), desc: t("excuseCardDesc"), path: "/excuse" },
     { label: t("suggestions"),     desc: t("suggestionsDesc"), path: "/suggestions" },
     { label: t("resignation"),     desc: t("resignationDesc"), path: "/resignation" },
     { label: t("expensesCardTitle"), desc: t("expensesCardDesc"), path: "/expenses" },
