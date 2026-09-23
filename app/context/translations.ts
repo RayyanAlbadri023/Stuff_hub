@@ -263,9 +263,14 @@ export const translations = {
     taskTitle: "Task title",
     taskDescription: "Description",
     assignTo: "Assign to...",
+    assignToMultiple: "Assign to (select one or more)",
     addTask: "Add Task",
     deleteTask: "Delete this task?",
-    taskFormError: "Please enter a title and pick an employee",
+    taskFormError: "Please enter a title and pick at least one employee",
+    taskStartDate: "Start Date",
+    taskEndDate: "End Date",
+    taskPeriod: "Period",
+    noDate: "No date set",
 
     // ── Vacation ────────────────────────────────────────────────────────────
     requestVacationTitle: "Request Vacation",
@@ -607,7 +612,7 @@ export const translations = {
     changesSaved: "تم حفظ التغييرات ✅",
 
     // ── وثائقي (خاص بالموظفين الوافدين) ─────────────────────────────────────
-    myDocumentsTitle: "وثائقي",
+    myDocumentsTitle: "الوثائق",
     myDocumentsDesc: "حدّث تواريخ انتهاء تصريح العمل وبطاقة الإقامة والجواز الخاصة بك",
     documentsNotApplicable: "هذا القسم خاص بالموظفين الوافدين فقط.",
     editDocumentDates: "حدّث تواريخ انتهاء وثائقك أدناه",
@@ -633,9 +638,14 @@ export const translations = {
     taskTitle: "عنوان المهمة",
     taskDescription: "الوصف",
     assignTo: "إسناد إلى...",
+    assignToMultiple: "إسناد إلى (اختر موظف واحد أو أكثر)",
     addTask: "إضافة مهمة",
     deleteTask: "حذف هذه المهمة؟",
-    taskFormError: "الرجاء إدخال عنوان واختيار موظف",
+    taskFormError: "الرجاء إدخال عنوان واختيار موظف واحد على الأقل",
+    taskStartDate: "تاريخ البداية",
+    taskEndDate: "تاريخ النهاية",
+    taskPeriod: "الفترة",
+    noDate: "لم يتم تحديد تاريخ",
 
     // ── Vacation ────────────────────────────────────────────────────────────
     requestVacationTitle: "طلب إجازة",
