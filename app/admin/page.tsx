@@ -8,7 +8,6 @@ import { useLang } from "@/app/context/LangContext";
 import LangToggle from "@/app/components/LangToggle";
 import { type Nationality } from "@/app/lib/socialInsurance";
 import { computeOmanizationStats, DEFAULT_OMANIZATION_SETTINGS, type OmanizationSettings } from "@/app/lib/omanization";
-import { getDocStatus, worstStatus, daysUntil, type DocStatus } from "@/app/lib/workPermit";
 import { exportToExcel, parseExcelFile } from "@/app/lib/excelUtils";
 import { downloadMonthlyReport } from "@/app/lib/monthlyReport";
 
@@ -45,13 +44,6 @@ interface User {
 }
 
 type ApiUsersResponse = User[];
-
-const DOC_STATUS_COLORS: Record<DocStatus, string> = {
-  valid:         "bg-green-100 text-green-700",
-  expiring_soon: "bg-amber-100 text-amber-700",
-  expired:       "bg-red-100 text-red-700",
-  missing:       "bg-gray-100 text-gray-500",
-};
 
 const ITEMS_PER_PAGE = 5;
 
@@ -161,25 +153,6 @@ export default function AdminPage() {
     })));
   };
 
-  const EXPORT_STATUS_LABELS: Record<DocStatus, string> = {
-    valid: "Valid",
-    expiring_soon: "Expiring Soon",
-    expired: "Expired",
-    missing: "Not on file",
-  };
-
-  const handleExportDocuments = () => {
-    exportToExcel("work-permits-residency", "Documents", allDocRows.map(({ user: u, isExpat, status }) => ({
-      Employee: `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim(),
-      "Work Permit Expiry": isExpat ? (u.workPermitExpiry || "—") : "—",
-      "Resident Card Expiry": isExpat ? (u.residencyExpiry || "—") : "—",
-      "Passport Expiry": isExpat ? (u.passportExpiry || "—") : "—",
-      "Personal ID": isExpat ? "—" : (u.personalIdFile ? "On file" : "Not on file"),
-      "Certified CV": isExpat ? "—" : (u.certifiedCvFile ? "On file" : "Not on file"),
-      Status: status === "valid" && !isExpat ? "On file" : EXPORT_STATUS_LABELS[status],
-    })));
-  };
-
   const handleDownloadReport = async () => {
     setReportLoading(true);
     try {
@@ -210,44 +183,6 @@ export default function AdminPage() {
   };
 
   const omanizationStats = computeOmanizationStats(users.map((u) => u.nationality), omanization);
-
-  // Unified compliance-documents table: expatriates are tracked by work
-  // permit / resident card / passport expiry, Omani employees by whether
-  // their personal ID and certified CV are on file. Both nationalities show
-  // in one list so HR has a single place to check everyone's status.
-  const allDocRows = users.map((u) => {
-    const isExpat = u.nationality === "expat";
-    if (isExpat) {
-      return {
-        user: u,
-        isExpat,
-        workPermitStatus: getDocStatus(u.workPermitExpiry),
-        residencyStatus: getDocStatus(u.residencyExpiry),
-        idOnFile: false,
-        cvOnFile: false,
-        status: worstStatus(u),
-      };
-    }
-    const idOnFile = !!u.personalIdFile;
-    const cvOnFile = !!u.certifiedCvFile;
-    return {
-      user: u,
-      isExpat,
-      workPermitStatus: "missing" as DocStatus,
-      residencyStatus: "missing" as DocStatus,
-      idOnFile,
-      cvOnFile,
-      status: (idOnFile && cvOnFile ? "valid" : "missing") as DocStatus,
-    };
-  });
-  const needsAttentionCount = allDocRows.filter((r) => r.status !== "valid").length;
-
-  const DOC_STATUS_LABELS: Record<DocStatus, string> = {
-    valid: t("docStatusValid"),
-    expiring_soon: t("docStatusExpiringSoon"),
-    expired: t("docStatusExpired"),
-    missing: t("docStatusMissing"),
-  };
 
   const filteredUsers  = users.filter((u) => `${u.firstName ?? ""} ${u.lastName ?? ""} ${u.email}`.toLowerCase().includes(search.toLowerCase()));
   const totalPages     = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
@@ -426,90 +361,6 @@ export default function AdminPage() {
               </div>
             </div>
 
-            {/* WORK PERMITS & RESIDENCY (all employees) */}
-            <div className="bg-gray-50 p-5 rounded-xl border border-gray-200">
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
-                <h2 className="font-bold text-[#F33615] text-lg">🛂 {t("workPermitTitle")}</h2>
-                <div className="flex flex-wrap items-center gap-2">
-                  {needsAttentionCount > 0 && (
-                    <span className="bg-red-500 text-white text-sm font-bold px-3 py-1 rounded-full">{needsAttentionCount} {t("needsAttention")}</span>
-                  )}
-                  <button onClick={handleExportDocuments} className="px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-gray-600 text-xs font-semibold hover:border-[#F33615] hover:text-[#F33615] transition">
-                    📤 {t("exportExcel")}
-                  </button>
-                </div>
-              </div>
-              <p className="text-xs text-gray-500 mb-4">{t("workPermitNote")}</p>
-
-              {allDocRows.length === 0 ? (
-                <p className="text-gray-500 text-sm text-center py-6 bg-white rounded-xl border border-gray-200">{t("noUsers")}</p>
-              ) : (
-                <div className="overflow-x-auto bg-white rounded-xl border border-gray-200">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="text-gray-600 border-b border-gray-200">
-                        <th className="text-start py-2 px-3">{t("users")}</th>
-                        <th className="text-start py-2 px-3">{t("workPermitExpiry")}</th>
-                        <th className="text-start py-2 px-3">{t("residencyExpiry")}</th>
-                        <th className="text-start py-2 px-3">{t("passportExpiry")}</th>
-                        <th className="text-start py-2 px-3">{t("personalIdDocument")}</th>
-                        <th className="text-start py-2 px-3">{t("certifiedCvDocument")}</th>
-                        <th className="text-start py-2 px-3">{t("status")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {allDocRows.map(({ user: u, isExpat, status, workPermitStatus, residencyStatus, idOnFile, cvOnFile }) => {
-                        const wpDays = daysUntil(u.workPermitExpiry);
-                        const resDays = daysUntil(u.residencyExpiry);
-                        return (
-                          <tr key={u.id} className="border-b border-gray-100">
-                            <td className="py-2 px-3 text-black">{u.firstName} {u.lastName}</td>
-                            {isExpat ? (
-                              <>
-                                <td className="py-2 px-3">
-                                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${DOC_STATUS_COLORS[workPermitStatus]}`}>
-                                    {u.workPermitExpiry || "—"} {wpDays !== null && (wpDays >= 0 ? `(${wpDays} ${t("daysLeft")})` : `(${Math.abs(wpDays)} ${t("daysOverdue")})`)}
-                                  </span>
-                                </td>
-                                <td className="py-2 px-3">
-                                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${DOC_STATUS_COLORS[residencyStatus]}`}>
-                                    {u.residencyExpiry || "—"} {resDays !== null && (resDays >= 0 ? `(${resDays} ${t("daysLeft")})` : `(${Math.abs(resDays)} ${t("daysOverdue")})`)}
-                                  </span>
-                                </td>
-                                <td className="py-2 px-3 text-gray-600">{u.passportExpiry || "—"}</td>
-                                <td className="py-2 px-3 text-gray-400">—</td>
-                                <td className="py-2 px-3 text-gray-400">—</td>
-                              </>
-                            ) : (
-                              <>
-                                <td className="py-2 px-3 text-gray-400">—</td>
-                                <td className="py-2 px-3 text-gray-400">—</td>
-                                <td className="py-2 px-3 text-gray-400">—</td>
-                                <td className="py-2 px-3">
-                                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${idOnFile ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-                                    {idOnFile ? t("docStatusOnFile") : t("docStatusMissing")}
-                                  </span>
-                                </td>
-                                <td className="py-2 px-3">
-                                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${cvOnFile ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-                                    {cvOnFile ? t("docStatusOnFile") : t("docStatusMissing")}
-                                  </span>
-                                </td>
-                              </>
-                            )}
-                            <td className="py-2 px-3">
-                              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${status === "valid" ? "bg-green-100 text-green-700" : DOC_STATUS_COLORS[status]}`}>
-                                {status === "valid" && !isExpat ? t("docStatusOnFile") : DOC_STATUS_LABELS[status]}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
           </>
         )}
       </div>
