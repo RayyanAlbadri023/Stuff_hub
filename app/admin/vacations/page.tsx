@@ -103,6 +103,15 @@ export default function AdminVacationsPage() {
     resignation: t("resignationLabel"),
   };
 
+  // Plain (no-emoji) labels — used in the type filter row.
+  const PLAIN_TYPE_LABELS: Record<RequestType, string> = {
+    vacation: t("plainVacation"),
+    suggestion: t("plainSuggestion"),
+    appeal: t("plainAppeal"),
+    excuse: t("plainExcuse"),
+    resignation: t("plainResignation"),
+  };
+
   const filteredRequests = requests.filter((r) => {
     const typeMatch = filterType === "all" || r.type === filterType;
     const statusMatch = filterStatus === "all" || r.status === filterStatus;
@@ -112,6 +121,10 @@ export default function AdminVacationsPage() {
   const pendingCount = requests.filter((r) => r.status === "pending").length;
   const approvedCount = requests.filter((r) => r.status === "approved").length;
   const rejectedCount = requests.filter((r) => r.status === "rejected").length;
+
+  // Distinguish annual vacation requests from other excused absences.
+  const annualVacationCount = requests.filter((r) => r.type === "vacation").length;
+  const excuseAbsenceCount = requests.filter((r) => r.type === "excuse").length;
 
   const initials = (name: string) => name.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("") || "?";
 
@@ -164,12 +177,25 @@ export default function AdminVacationsPage() {
               </button>
             </div>
 
+            {/* ANNUAL VACATION vs. EXCUSED ABSENCE */}
+            <p className="text-xs font-semibold text-gray-500 mb-2">{t("requestsByType")}</p>
+            <div className="grid grid-cols-2 gap-3 mb-5">
+              <button onClick={() => setFilterType("vacation")} className={`bg-white rounded-xl p-3 text-center border transition ${filterType === "vacation" ? "border-[#F33615] ring-2 ring-orange-200" : "border-gray-200 hover:border-gray-300"}`}>
+                <p className="text-xs text-gray-500 mb-1">{t("plainVacation")}</p>
+                <p className="text-2xl font-bold text-[#F33615]">{annualVacationCount}</p>
+              </button>
+              <button onClick={() => setFilterType("excuse")} className={`bg-white rounded-xl p-3 text-center border transition ${filterType === "excuse" ? "border-purple-400 ring-2 ring-purple-200" : "border-gray-200 hover:border-gray-300"}`}>
+                <p className="text-xs text-gray-500 mb-1">{t("plainExcuse")}</p>
+                <p className="text-2xl font-bold text-purple-600">{excuseAbsenceCount}</p>
+              </button>
+            </div>
+
             {/* FILTERS */}
             <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-5 bg-white border border-gray-200 rounded-xl p-2">
               <div className="flex flex-wrap gap-1.5">
                 {(["all", "vacation", "suggestion", "appeal", "excuse", "resignation"] as const).map((type) => (
                   <button key={type} onClick={() => setFilterType(type)} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${filterType === type ? "bg-[#030405] text-white" : "text-gray-600 hover:bg-gray-100"}`}>
-                    {type === "all" ? t("all") : `${TYPE_ICONS[type]} ${TYPE_LABELS[type]}`}
+                    {type === "all" ? t("all") : PLAIN_TYPE_LABELS[type]}
                   </button>
                 ))}
               </div>
