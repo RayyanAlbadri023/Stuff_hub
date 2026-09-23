@@ -23,6 +23,7 @@ export default function EmployeeDashboard() {
     { label: t("suggestions"),     desc: t("suggestionsDesc"), path: "/suggestions" },
     { label: t("resignation"),     desc: t("resignationDesc"), path: "/resignation" },
     { label: t("expensesCardTitle"), desc: t("expensesCardDesc"), path: "/expenses" },
+    { label: t("sharedFilesCardTitle"), desc: t("sharedFilesCardDesc"), path: "/files" },
   ];
 
   return (

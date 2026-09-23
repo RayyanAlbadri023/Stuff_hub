@@ -344,6 +344,22 @@ export const translations = {
     receiptImage: "Receipt",
     totalApprovedAmount: "Total Approved",
 
+    // ── Shared Files ────────────────────────────────────────────────────────
+    sharedFilesCardTitle: "Shared Files",
+    sharedFilesCardDesc: "Upload and share your work with the team.",
+    sharedFilesTitle: "Shared Files",
+    navFiles: "📁 Files",
+    uploadSharedFile: "Upload File",
+    fileTitlePlaceholder: "Title or short description (optional)",
+    chooseFile: "Choose File",
+    sharedFileRequired: "Please choose a file to upload",
+    sharedFileTooLarge: "File is too large (max 8 MB)",
+    sharedFileUploaded: "File uploaded successfully ✅",
+    noSharedFiles: "No files shared yet",
+    uploadedBy: "Uploaded by",
+    deleteFileConfirm: "Delete this file?",
+    download: "Download",
+
     // ── Admin ───────────────────────────────────────────────────────────────
     adminPanel: "Admin Panel",
     managerPanel: "Manager Panel",
@@ -742,6 +758,22 @@ export const translations = {
     viewReceipt: "عرض الفاتورة",
     receiptImage: "الفاتورة",
     totalApprovedAmount: "إجمالي المعتمد",
+
+    // ── Shared Files ────────────────────────────────────────────────────────
+    sharedFilesCardTitle: "الملفات المشتركة",
+    sharedFilesCardDesc: "ارفع شغلك وشاركه مع الفريق.",
+    sharedFilesTitle: "الملفات المشتركة",
+    navFiles: "📁 الملفات",
+    uploadSharedFile: "رفع ملف",
+    fileTitlePlaceholder: "عنوان أو وصف مختصر (اختياري)",
+    chooseFile: "اختيار ملف",
+    sharedFileRequired: "يرجى اختيار ملف للرفع",
+    sharedFileTooLarge: "حجم الملف كبير جدًا (الحد الأقصى 8 ميجابايت)",
+    sharedFileUploaded: "تم رفع الملف بنجاح ✅",
+    noSharedFiles: "لا توجد ملفات مشتركة بعد",
+    uploadedBy: "رفعه",
+    deleteFileConfirm: "حذف هذا الملف؟",
+    download: "تحميل",
 
     // ── Admin ───────────────────────────────────────────────────────────────
     adminPanel: "لوحة المسؤول",
