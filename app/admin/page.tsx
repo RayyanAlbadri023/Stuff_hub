@@ -8,6 +8,7 @@ import { useLang } from "@/app/context/LangContext";
 import LangToggle from "@/app/components/LangToggle";
 import { type Nationality } from "@/app/lib/socialInsurance";
 import { computeOmanizationStats, DEFAULT_OMANIZATION_SETTINGS, type OmanizationSettings } from "@/app/lib/omanization";
+import { getDocStatus, worstStatus, type DocStatus } from "@/app/lib/workPermit";
 import { exportToExcel, parseExcelFile } from "@/app/lib/excelUtils";
 import { downloadMonthlyReport } from "@/app/lib/monthlyReport";
 
@@ -47,6 +48,13 @@ type ApiUsersResponse = User[];
 
 const ITEMS_PER_PAGE = 5;
 
+const DOC_STATUS_COLORS: Record<DocStatus, string> = {
+  valid: "bg-green-100 text-green-700",
+  expiring_soon: "bg-amber-100 text-amber-700",
+  expired: "bg-red-100 text-red-700",
+  missing: "bg-gray-100 text-gray-500",
+};
+
 export default function AdminPage() {
   const router = useRouter();
   const { loading: authLoading, logout } = useAuth({ requiredRole: "admin" });
@@ -62,7 +70,6 @@ export default function AdminPage() {
   const loadData = useCallback(() => setReloadKey((k) => k + 1), []);
 
   const [omanization, setOmanization] = useState<OmanizationSettings>(DEFAULT_OMANIZATION_SETTINGS);
-  const [omanizationSavedMsg, setOmanizationSavedMsg] = useState("");
 
   const importFileInputRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
@@ -99,17 +106,6 @@ export default function AdminPage() {
     if (!confirm(t("deleteUser"))) return;
     await execute(`/api/users/${id}`, { method: "DELETE" });
     setUsers((prev) => prev.filter((u) => u.id !== id));
-  };
-
-  const saveOmanization = async () => {
-    const updated = await execute("/api/settings/omanization", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(omanization),
-    });
-    if (updated && typeof updated === "object") setOmanization({ ...DEFAULT_OMANIZATION_SETTINGS, ...(updated as Partial<OmanizationSettings>) });
-    setOmanizationSavedMsg(t("targetSaved"));
-    setTimeout(() => setOmanizationSavedMsg(""), 2500);
   };
 
   const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -153,6 +149,16 @@ export default function AdminPage() {
     })));
   };
 
+  const handleExportDocuments = () => {
+    exportToExcel("work-permits-residency", t("workPermitTitle"), allDocRows.map(({ user: u, isExpat, status }) => ({
+      [t("users")]: `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || u.email,
+      [t("workPermitExpiry")]: isExpat ? (u.workPermitExpiry ?? "") : "",
+      [t("residencyExpiry")]: isExpat ? (u.residencyExpiry ?? "") : "",
+      [t("passportExpiry")]: u.passportExpiry ?? "",
+      [t("status")]: docStatusLabel(status),
+    })));
+  };
+
   const handleDownloadReport = async () => {
     setReportLoading(true);
     try {
@@ -183,6 +189,26 @@ export default function AdminPage() {
   };
 
   const omanizationStats = computeOmanizationStats(users.map((u) => u.nationality), omanization);
+
+  const docStatusLabel = (s: DocStatus) => ({
+    valid: t("docStatusValid"),
+    expiring_soon: t("docStatusExpiringSoon"),
+    expired: t("docStatusExpired"),
+    missing: t("docStatusMissing"),
+  }[s]);
+
+  const allDocRows = users.map((u) => {
+    const isExpat = u.nationality === "expat";
+    const workPermitStatus = getDocStatus(u.workPermitExpiry);
+    const residencyStatus = getDocStatus(u.residencyExpiry);
+    const idOnFile = !!u.personalIdFile;
+    const cvOnFile = !!u.certifiedCvFile;
+    const status: DocStatus = isExpat ? worstStatus(u) : (idOnFile && cvOnFile ? "valid" : "missing");
+    return { user: u, isExpat, workPermitStatus, residencyStatus, idOnFile, cvOnFile, status };
+  });
+  const needsAttentionCount = allDocRows.filter(
+    (r) => r.status === "expired" || r.status === "expiring_soon" || (!r.isExpat && r.status === "missing")
+  ).length;
 
   const filteredUsers  = users.filter((u) => `${u.firstName ?? ""} ${u.lastName ?? ""} ${u.email}`.toLowerCase().includes(search.toLowerCase()));
   const totalPages     = Math.ceil(filteredUsers.length / ITEMS_PER_PAGE);
@@ -284,81 +310,81 @@ export default function AdminPage() {
               )}
             </div>
 
-            {/* OMANIZATION */}
+            {/* WORK PERMITS & RESIDENCY (all employees) */}
             <div className="bg-gray-50 p-5 rounded-xl border border-gray-200">
-              <h2 className="font-bold mb-1 text-[#F33615] text-lg">🇴🇲 {t("omanizationTitle")}</h2>
-              <p className="text-xs text-gray-500 mb-4">{t("omanizationNote")}</p>
-
-              {/* TARGET SETTINGS */}
-              <div className="bg-white rounded-xl border border-gray-200 p-4 mb-5">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs text-gray-600 block mb-1">{t("sectorLabel")}</label>
-                    <input
-                      value={omanization.sectorLabel}
-                      onChange={(e) => setOmanization({ ...omanization, sectorLabel: e.target.value })}
-                      className="w-full p-2 border rounded-lg text-black text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-600 block mb-1">{t("targetPercentage")}</label>
-                    <input
-                      type="number"
-                      step="0.5"
-                      value={omanization.targetPercentage}
-                      onChange={(e) => setOmanization({ ...omanization, targetPercentage: Number(e.target.value) })}
-                      className="w-full p-2 border rounded-lg text-black text-sm"
-                    />
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 mt-3">
-                  <button onClick={saveOmanization} className="px-4 py-2 rounded-lg text-white text-sm font-semibold bg-[#030405] hover:bg-[#F33615] transition">{t("saveTarget")}</button>
-                  {omanizationSavedMsg && <span className="text-green-600 text-sm font-medium">{omanizationSavedMsg}</span>}
-                </div>
-              </div>
-
-              {/* OVERVIEW */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                <div className="bg-white rounded-xl p-3 text-center border border-gray-200">
-                  <p className="text-xs text-gray-500 mb-1">{t("totalEmployees")}</p>
-                  <p className="text-2xl font-bold text-gray-700">{omanizationStats.totalEmployees}</p>
-                </div>
-                <div className="bg-white rounded-xl p-3 text-center border border-gray-200">
-                  <p className="text-xs text-gray-500 mb-1">{t("omaniCount")}</p>
-                  <p className="text-2xl font-bold text-emerald-600">{omanizationStats.omaniCount}</p>
-                </div>
-                <div className="bg-white rounded-xl p-3 text-center border border-gray-200">
-                  <p className="text-xs text-gray-500 mb-1">{t("expatCount")}</p>
-                  <p className="text-2xl font-bold text-amber-600">{omanizationStats.expatCount}</p>
-                </div>
-                <div className={`rounded-xl p-3 text-center border ${omanizationStats.compliant ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"}`}>
-                  <p className="text-xs text-gray-500 mb-1">{t("currentPercentage")}</p>
-                  <p className={`text-2xl font-bold ${omanizationStats.compliant ? "text-green-600" : "text-red-600"}`}>{omanizationStats.currentPercentage}%</p>
-                </div>
-              </div>
-
-              {/* PROGRESS BAR */}
-              <div className="bg-white rounded-xl border border-gray-200 p-4">
-                <div className="flex justify-between items-center mb-2 text-xs text-gray-600">
-                  <span>{t("currentPercentage")}: {omanizationStats.currentPercentage}%</span>
-                  <span>{t("targetPercentage")}: {omanizationStats.targetPercentage}%</span>
-                </div>
-                <div className="relative w-full h-3 bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all ${omanizationStats.compliant ? "bg-green-500" : "bg-[#F33615]"}`}
-                    style={{ width: `${Math.min(100, omanizationStats.currentPercentage)}%` }}
-                  />
-                  <div className="absolute top-0 bottom-0 w-0.5 bg-gray-700" style={{ left: `${Math.min(100, omanizationStats.targetPercentage)}%` }} />
-                </div>
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${omanizationStats.compliant ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-                    {omanizationStats.compliant ? `✓ ${t("compliant")}` : `⚠ ${t("nonCompliant")}`}
-                  </span>
-                  {!omanizationStats.compliant && omanizationStats.gapCount > 0 && (
-                    <span className="text-xs text-gray-600">{t("omaniHiresNeeded")}: <strong>{omanizationStats.gapCount}</strong></span>
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
+                <h2 className="font-bold text-[#F33615] text-lg flex items-center gap-2">
+                  🛂 {t("workPermitTitle")}
+                  {needsAttentionCount > 0 && (
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                      {needsAttentionCount} {t("needsAttention")}
+                    </span>
                   )}
-                </div>
+                </h2>
+                <button onClick={handleExportDocuments} className="px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-gray-600 text-xs font-semibold hover:border-[#F33615] hover:text-[#F33615] transition">
+                  📤 {t("exportExcel")}
+                </button>
               </div>
+              <p className="text-xs text-gray-500 mb-4">{t("workPermitNote")}</p>
+              {allDocRows.length === 0 ? (
+                <p className="text-gray-500 text-sm">{t("noUsers")}</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs text-gray-500 border-b border-gray-200">
+                        <th className="py-2 pr-3">{t("users")}</th>
+                        <th className="py-2 pr-3">{t("workPermitExpiry")}</th>
+                        <th className="py-2 pr-3">{t("residencyExpiry")}</th>
+                        <th className="py-2 pr-3">{t("passportExpiry")}</th>
+                        <th className="py-2 pr-3">{t("personalIdDocument")}</th>
+                        <th className="py-2 pr-3">{t("certifiedCvDocument")}</th>
+                        <th className="py-2 pr-3">{t("status")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allDocRows.map(({ user: u, isExpat, workPermitStatus, residencyStatus, idOnFile, cvOnFile, status }) => (
+                        <tr key={u.id} className="border-b border-gray-100 last:border-0">
+                          <td className="py-2 pr-3">
+                            <p className="font-medium text-black">{u.firstName} {u.lastName}</p>
+                            <p className="text-xs text-gray-400">{u.email}</p>
+                          </td>
+                          <td className="py-2 pr-3">
+                            {isExpat ? (
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${DOC_STATUS_COLORS[workPermitStatus]}`}>
+                                {u.workPermitExpiry || t("docStatusMissing")}
+                              </span>
+                            ) : <span className="text-xs text-gray-300">—</span>}
+                          </td>
+                          <td className="py-2 pr-3">
+                            {isExpat ? (
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${DOC_STATUS_COLORS[residencyStatus]}`}>
+                                {u.residencyExpiry || t("docStatusMissing")}
+                              </span>
+                            ) : <span className="text-xs text-gray-300">—</span>}
+                          </td>
+                          <td className="py-2 pr-3 text-xs text-gray-600">{u.passportExpiry || "—"}</td>
+                          <td className="py-2 pr-3">
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${idOnFile ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                              {idOnFile ? t("docStatusOnFile") : t("docStatusMissing")}
+                            </span>
+                          </td>
+                          <td className="py-2 pr-3">
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${cvOnFile ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                              {cvOnFile ? t("docStatusOnFile") : t("docStatusMissing")}
+                            </span>
+                          </td>
+                          <td className="py-2 pr-3">
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${DOC_STATUS_COLORS[status]}`}>
+                              {docStatusLabel(status)}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
           </>
