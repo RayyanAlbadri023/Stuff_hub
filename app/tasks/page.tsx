@@ -14,6 +14,8 @@ interface TaskItem {
   title: string;
   description?: string;
   status: TaskStatus;
+  startDate?: string;
+  endDate?: string;
   createdAt?: string;
 }
 
@@ -98,6 +100,9 @@ export default function TasksPage() {
                     <div key={tk.id} className="bg-white rounded-xl p-3 border border-gray-200 shadow-sm">
                       <p className="font-semibold text-black text-sm">{tk.title}</p>
                       {tk.description && <p className="text-xs text-gray-600 mt-1">{tk.description}</p>}
+                      {(tk.startDate || tk.endDate) && (
+                        <p className="text-xs text-gray-400 mt-1">📅 {tk.startDate || "…"} → {tk.endDate || "…"}</p>
+                      )}
                       <div className="flex gap-2 mt-3">
                         {PREV[tk.status] && (
                           <button onClick={() => moveTask(tk.id, PREV[tk.status]!)} className="flex-1 px-2 py-1.5 rounded-lg bg-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-300 transition">

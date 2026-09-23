@@ -23,6 +23,8 @@ interface TaskItem {
   assignedToName?: string;
   assignedToEmail?: string;
   status: TaskStatus;
+  startDate?: string;
+  endDate?: string;
   createdAt?: string;
 }
 
@@ -48,7 +50,7 @@ export default function AdminTasksPage() {
   const [filterTaskStatus, setFilterTaskStatus] = useState<TaskStatus | "all">("all");
   const [reloadKey, setReloadKey] = useState(0);
   const loadData = useCallback(() => setReloadKey((k) => k + 1), []);
-  const [newTask, setNewTask] = useState({ title: "", description: "", assignedToId: "" });
+  const [newTask, setNewTask] = useState({ title: "", description: "", assignedToIds: [] as string[], startDate: "", endDate: "" });
 
   const executeRef = useRef(execute);
   useEffect(() => { executeRef.current = execute; });
@@ -77,21 +79,33 @@ export default function AdminTasksPage() {
   }, [authLoading, reloadKey]);
 
   const addTask = async () => {
-    if (!newTask.title.trim() || !newTask.assignedToId) return alert(t("taskFormError"));
-    const assignee = users.find((u) => String(u.id) === newTask.assignedToId);
+    if (!newTask.title.trim() || newTask.assignedToIds.length === 0) return alert(t("taskFormError"));
+    const assignees = newTask.assignedToIds.map((id) => {
+      const u = users.find((usr) => String(usr.id) === id);
+      return { id, name: `${u?.firstName ?? ""} ${u?.lastName ?? ""}`.trim(), email: u?.email ?? "" };
+    });
     await execute("/api/tasks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title: newTask.title,
         description: newTask.description,
-        assignedToId: newTask.assignedToId,
-        assignedToName: `${assignee?.firstName ?? ""} ${assignee?.lastName ?? ""}`.trim(),
-        assignedToEmail: assignee?.email ?? "",
+        assignees,
+        startDate: newTask.startDate,
+        endDate: newTask.endDate,
       }),
     });
-    setNewTask({ title: "", description: "", assignedToId: "" });
+    setNewTask({ title: "", description: "", assignedToIds: [], startDate: "", endDate: "" });
     loadData();
+  };
+
+  const toggleAssignee = (id: string) => {
+    setNewTask((prev) => ({
+      ...prev,
+      assignedToIds: prev.assignedToIds.includes(id)
+        ? prev.assignedToIds.filter((x) => x !== id)
+        : [...prev.assignedToIds, id],
+    }));
   };
 
   const deleteTask = async (id: string) => {
@@ -162,22 +176,45 @@ export default function AdminTasksPage() {
               ))}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-2 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
               <input placeholder={t("taskTitle")} value={newTask.title} onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-                className="p-2.5 border rounded-lg text-black bg-white/80 md:col-span-1" />
+                className="p-2.5 border rounded-lg text-black bg-white/80" />
               <input placeholder={t("taskDescription")} value={newTask.description} onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                className="p-2.5 border rounded-lg text-black bg-white/80 md:col-span-2" />
-              <select value={newTask.assignedToId} onChange={(e) => setNewTask({ ...newTask, assignedToId: e.target.value })}
-                className="p-2.5 border rounded-lg text-black bg-white/80">
-                <option value="">{t("assignTo")}</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>
-                ))}
-              </select>
-              <button onClick={addTask} className="md:col-span-4 py-2.5 rounded-lg text-white font-semibold bg-gradient-to-r from-[#F33615] to-[#ff6b4a]">
-                ➕ {t("addTask")}
-              </button>
+                className="p-2.5 border rounded-lg text-black bg-white/80" />
             </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+              <div>
+                <label className="text-xs text-gray-600 block mb-1">{t("taskStartDate")}</label>
+                <input type="date" value={newTask.startDate} onChange={(e) => setNewTask({ ...newTask, startDate: e.target.value })}
+                  className="w-full p-2.5 border rounded-lg text-black bg-white/80" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-600 block mb-1">{t("taskEndDate")}</label>
+                <input type="date" value={newTask.endDate} onChange={(e) => setNewTask({ ...newTask, endDate: e.target.value })}
+                  className="w-full p-2.5 border rounded-lg text-black bg-white/80" />
+              </div>
+            </div>
+
+            <div className="mb-3">
+              <label className="text-xs text-gray-600 block mb-1">{t("assignToMultiple")}</label>
+              <div className="border rounded-lg bg-white/80 p-2 max-h-40 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-1">
+                {users.map((u) => (
+                  <label key={u.id} className="flex items-center gap-2 text-sm text-black px-2 py-1 rounded-md hover:bg-gray-100 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newTask.assignedToIds.includes(String(u.id))}
+                      onChange={() => toggleAssignee(String(u.id))}
+                    />
+                    {u.firstName} {u.lastName}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <button onClick={addTask} className="w-full mb-4 py-2.5 rounded-lg text-white font-semibold bg-gradient-to-r from-[#F33615] to-[#ff6b4a]">
+              ➕ {t("addTask")}
+            </button>
 
             {/* STATUS FILTER */}
             <div className="flex flex-wrap gap-2 mb-4">
@@ -199,6 +236,9 @@ export default function AdminTasksPage() {
                       <p className="font-medium text-black break-words">{tk.title}</p>
                       {tk.description && <p className="text-xs text-gray-500 break-words">{tk.description}</p>}
                       <p className="text-xs text-gray-400">{tk.assignedToName || tk.assignedToEmail}</p>
+                      {(tk.startDate || tk.endDate) && (
+                        <p className="text-xs text-gray-400">📅 {tk.startDate || "…"} → {tk.endDate || "…"}</p>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${TASK_STATUS_COLORS[tk.status]}`}>{TASK_STATUS_LABELS[tk.status]}</span>
