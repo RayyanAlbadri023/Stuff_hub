@@ -100,6 +100,16 @@ export default function VacationPage() {
           <LangToggle dark />
         </div>
         <div className="p-6">
+        {/* VACATION POLICY */}
+        <div className="mb-4 bg-gray-50 border border-gray-200 rounded-xl p-3">
+          <p className="text-xs font-semibold text-[#F33615] mb-1.5">📜 {t("vacationPolicyTitle")}</p>
+          <ul className="list-disc ps-4 text-[11px] text-gray-600 space-y-1">
+            <li>{t("vacationPolicyRule1")}</li>
+            <li>{t("vacationPolicyRule2")}</li>
+            <li>{t("vacationPolicyRule3")}</li>
+          </ul>
+        </div>
+
         {error      && <p className="text-red-500 text-sm mb-2">{error}</p>}
         {successMsg && <p className="text-green-600 text-sm mb-2">{successMsg}</p>}
         {remaining !== null && (

@@ -284,6 +284,10 @@ export const translations = {
     endBeforeStart: "End date must be after start date",
     vacationSuccess: "Vacation request sent to admin ✅",
     vacationLimitError: "You cannot exceed 30 vacation days per year (Friday & Saturday are not counted)",
+    vacationPolicyTitle: "Vacation Policy",
+    vacationPolicyRule1: "You are entitled to 30 vacation days per calendar year. Fridays and Saturdays (the weekend) are not counted against this balance.",
+    vacationPolicyRule2: "Unused days at year-end carry over to the following year, but only for the first 3 months (January 1 – March 31).",
+    vacationPolicyRule3: "If the carried-over balance is not used by the end of March, it expires and cannot be used or added back afterward.",
 
     // ── Appeal ──────────────────────────────────────────────────────────────
     appealTitle: "Send Appeal to Manager",
@@ -673,6 +677,10 @@ export const translations = {
     endBeforeStart: "يجب أن يكون تاريخ النهاية بعد تاريخ البداية",
     vacationSuccess: "تم إرسال طلب الإجازة للمسؤول ✅",
     vacationLimitError: "لا يمكن تجاوز 30 يوم إجازة سنويًا (لا تُحتسب الجمعة والسبت)",
+    vacationPolicyTitle: "قانون الإجازات",
+    vacationPolicyRule1: "يستحق الموظف 30 يوم إجازة في السنة الميلادية، ولا تُحتسب أيام الجمعة والسبت (عطلة نهاية الأسبوع) من هذا الرصيد.",
+    vacationPolicyRule2: "إذا لم يستخدم الموظف رصيده الكامل (30 يوم) خلال السنة، يُرحّل المتبقي إلى السنة التالية، لكن فقط خلال أول 3 أشهر منها (1 يناير – 31 مارس).",
+    vacationPolicyRule3: "إذا لم يُستخدم الرصيد المرحّل قبل نهاية مارس، تنتهي صلاحيته ولا يمكن استخدامه أو إضافته لاحقًا.",
 
     // ── Appeal ──────────────────────────────────────────────────────────────
     appealTitle: "إرسال تظلم للمدير",
