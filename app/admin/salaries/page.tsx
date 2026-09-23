@@ -269,7 +269,6 @@ export default function AdminSalariesPage() {
                   <thead>
                     <tr className="text-gray-600 border-b border-gray-200">
                       <th className="text-start py-2 px-3">{t("users")}</th>
-                      <th className="text-start py-2 px-3">{t("nationality")}</th>
                       <th className="text-start py-2 px-3">{t("contributableSalary")}</th>
                       <th className="text-start py-2 px-3">{t("employeeShare")}</th>
                       <th className="text-start py-2 px-3">{t("employerShare")}</th>
@@ -278,16 +277,11 @@ export default function AdminSalariesPage() {
                   </thead>
                   <tbody>
                     {insuranceRows.length === 0 ? (
-                      <tr><td colSpan={6} className="text-center text-gray-500 py-6">{t("noUsers")}</td></tr>
+                      <tr><td colSpan={5} className="text-center text-gray-500 py-6">{t("noUsers")}</td></tr>
                     ) : (
                       insuranceRows.map(({ user: u, breakdown }) => (
                         <tr key={u.id} className="border-b border-gray-100">
                           <td className="py-2 px-3 text-black">{u.firstName} {u.lastName}</td>
-                          <td className="py-2 px-3">
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${u.nationality === "expat" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
-                              {u.nationality === "expat" ? t("expat") : t("omani")}
-                            </span>
-                          </td>
                           <td className="py-2 px-3 text-black">{breakdown.contributableSalary.toFixed(2)}</td>
                           <td className="py-2 px-3 text-black">{breakdown.employeeShare.toFixed(2)}</td>
                           <td className="py-2 px-3 text-black">{breakdown.employerShare.toFixed(2)}</td>
