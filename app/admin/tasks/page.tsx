@@ -25,6 +25,7 @@ interface TaskItem {
   status: TaskStatus;
   startDate?: string;
   endDate?: string;
+  project?: string;
   createdAt?: string;
 }
 
@@ -36,6 +37,18 @@ const TASK_STATUS_COLORS: Record<TaskStatus, string> = {
   in_progress: "bg-blue-100 text-blue-700",
   done: "bg-green-100 text-green-700",
 };
+
+const PROJECT_OPTIONS = [
+  "دريد",
+  "لسان",
+  "خط عمان",
+  "الخليل",
+  "المدونة",
+  "مصحف مسقط",
+  "تطبيق المحاضر",
+  "تطبيق الطالب",
+  "ERP",
+];
 
 export default function AdminTasksPage() {
   const router = useRouter();
@@ -50,7 +63,7 @@ export default function AdminTasksPage() {
   const [filterTaskStatus, setFilterTaskStatus] = useState<TaskStatus | "all">("all");
   const [reloadKey, setReloadKey] = useState(0);
   const loadData = useCallback(() => setReloadKey((k) => k + 1), []);
-  const [newTask, setNewTask] = useState({ title: "", description: "", assignedToIds: [] as string[], startDate: "", endDate: "" });
+  const [newTask, setNewTask] = useState({ title: "", description: "", assignedToIds: [] as string[], startDate: "", endDate: "", project: "" });
 
   const executeRef = useRef(execute);
   useEffect(() => { executeRef.current = execute; });
@@ -93,9 +106,10 @@ export default function AdminTasksPage() {
         assignees,
         startDate: newTask.startDate,
         endDate: newTask.endDate,
+        project: newTask.project,
       }),
     });
-    setNewTask({ title: "", description: "", assignedToIds: [], startDate: "", endDate: "" });
+    setNewTask({ title: "", description: "", assignedToIds: [], startDate: "", endDate: "", project: "" });
     loadData();
   };
 
@@ -197,6 +211,20 @@ export default function AdminTasksPage() {
             </div>
 
             <div className="mb-3">
+              <label className="text-xs text-gray-600 block mb-1">{t("taskProject")}</label>
+              <select
+                value={newTask.project}
+                onChange={(e) => setNewTask({ ...newTask, project: e.target.value })}
+                className="w-full p-2.5 border rounded-lg text-black bg-white/80"
+              >
+                <option value="">{t("noProject")}</option>
+                {PROJECT_OPTIONS.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="mb-3">
               <label className="text-xs text-gray-600 block mb-1">{t("assignToMultiple")}</label>
               <div className="border rounded-lg bg-white/80 p-2 max-h-40 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-1">
                 {users.map((u) => (
@@ -233,7 +261,12 @@ export default function AdminTasksPage() {
                 {filteredTasks.map((tk) => (
                   <div key={tk.id} className="flex flex-wrap gap-3 justify-between items-center p-3 bg-white rounded-lg border border-gray-200">
                     <div className="min-w-0">
-                      <p className="font-medium text-black break-words">{tk.title}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-medium text-black break-words">{tk.title}</p>
+                        {tk.project && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">📁 {tk.project}</span>
+                        )}
+                      </div>
                       {tk.description && <p className="text-xs text-gray-500 break-words">{tk.description}</p>}
                       <p className="text-xs text-gray-400">{tk.assignedToName || tk.assignedToEmail}</p>
                       {(tk.startDate || tk.endDate) && (

@@ -18,6 +18,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (body.description !== undefined) updates.description = body.description;
     if (body.startDate !== undefined) updates.startDate = body.startDate;
     if (body.endDate !== undefined) updates.endDate = body.endDate;
+    if (body.project !== undefined) updates.project = body.project;
 
     if (Object.keys(updates).length === 0)
       return NextResponse.json({ message: "No valid fields to update" }, { status: 400 });

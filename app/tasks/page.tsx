@@ -16,6 +16,7 @@ interface TaskItem {
   status: TaskStatus;
   startDate?: string;
   endDate?: string;
+  project?: string;
   createdAt?: string;
 }
 
@@ -98,7 +99,12 @@ export default function TasksPage() {
                   {items.length === 0 && <p className="text-gray-500 text-sm text-center py-6">{t("noTasks")}</p>}
                   {items.map((tk) => (
                     <div key={tk.id} className="bg-white rounded-xl p-3 border border-gray-200 shadow-sm">
-                      <p className="font-semibold text-black text-sm">{tk.title}</p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold text-black text-sm">{tk.title}</p>
+                        {tk.project && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">📁 {tk.project}</span>
+                        )}
+                      </div>
                       {tk.description && <p className="text-xs text-gray-600 mt-1">{tk.description}</p>}
                       {(tk.startDate || tk.endDate) && (
                         <p className="text-xs text-gray-400 mt-1">📅 {tk.startDate || "…"} → {tk.endDate || "…"}</p>

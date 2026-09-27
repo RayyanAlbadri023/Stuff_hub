@@ -27,7 +27,7 @@ interface Assignee {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { title, description, assignedToId, assignedToName, assignedToEmail, startDate, endDate } = body;
+    const { title, description, assignedToId, assignedToName, assignedToEmail, startDate, endDate, project } = body;
 
     // Accept either a single assignee (legacy) or a list of assignees (bulk assign to multiple employees).
     const assignees: Assignee[] = Array.isArray(body.assignees) && body.assignees.length > 0
@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
         status: "task",
         startDate: startDate || "",
         endDate: endDate || "",
+        project: project || "",
         createdAt,
       };
     }

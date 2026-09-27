@@ -271,6 +271,8 @@ export const translations = {
     taskEndDate: "End Date",
     taskPeriod: "Period",
     noDate: "No date set",
+    taskProject: "Project",
+    noProject: "No project",
 
     // ── Vacation ────────────────────────────────────────────────────────────
     requestVacationTitle: "Request Vacation",
@@ -686,6 +688,8 @@ export const translations = {
     taskEndDate: "تاريخ النهاية",
     taskPeriod: "الفترة",
     noDate: "لم يتم تحديد تاريخ",
+    taskProject: "المشروع",
+    noProject: "بدون مشروع",
 
     // ── Vacation ────────────────────────────────────────────────────────────
     requestVacationTitle: "طلب إجازة",
