@@ -1,10 +1,11 @@
 import { NextResponse, NextRequest } from "next/server";
 import db from "@/app/lib/db";
+import { canAccessSection } from "@/app/lib/fileSections";
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const { requesterEmail, requesterRole } = await req.json().catch(() => ({}));
+    const { requesterEmail } = await req.json().catch(() => ({}));
 
     const snap = await db.ref(`sharedFiles/${id}`).once("value");
     const file = snap.val();
@@ -13,8 +14,11 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     }
 
     const isOwner = requesterEmail && file.uploadedByEmail === requesterEmail;
-    const isAdminOrManager = requesterRole === "admin" || requesterRole === "manager";
-    if (!isOwner && !isAdminOrManager) {
+    // Sections are isolated, so an admin/manager role alone is no longer
+    // enough to delete someone else's file — the requester must actually
+    // belong to that file's section (or hold the super-access email).
+    const hasSectionAccess = canAccessSection(requesterEmail, file.section || "general");
+    if (!isOwner && !hasSectionAccess) {
       return NextResponse.json({ message: "Not allowed to delete this file" }, { status: 403 });
     }
 

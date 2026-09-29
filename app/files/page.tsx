@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/hooks/useAuth";
 import { useRequest } from "@/app/hooks/useRequest";
 import { useLang } from "@/app/context/LangContext";
 import LangToggle from "@/app/components/LangToggle";
+import { getAccessibleSections, type FileSectionKey } from "@/app/lib/fileSections";
 
 interface SharedFile {
   id: string;
@@ -13,6 +14,7 @@ interface SharedFile {
   fileData: string;
   fileName: string;
   fileSize: number;
+  section: FileSectionKey;
   uploadedByName: string;
   uploadedByEmail: string;
   uploadedByRole: string;
@@ -35,6 +37,11 @@ export default function SharedFilesPage() {
   const { t, isRTL } = useLang();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Only the sections this user is a member of (or all of them, for the
+  // super-access email) are ever shown — sections are fully isolated.
+  const accessibleSections = useMemo(() => getAccessibleSections(user?.email), [user?.email]);
+
+  const [activeSection, setActiveSection] = useState<FileSectionKey | null>(null);
   const [files, setFiles] = useState<SharedFile[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [title, setTitle] = useState("");
@@ -45,12 +52,21 @@ export default function SharedFilesPage() {
   const [reloadKey, setReloadKey] = useState(0);
   const loadData = useCallback(() => setReloadKey((k) => k + 1), []);
 
+  // Default to the first section this user can see once we know who they are.
   useEffect(() => {
     if (authLoading) return;
+    if (!activeSection && accessibleSections.length > 0) {
+      setActiveSection(accessibleSections[0].key);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, accessibleSections]);
+
+  useEffect(() => {
+    if (authLoading || !activeSection || !user?.email) return;
     let cancelled = false;
     async function fetchFiles() {
       setDataLoading(true);
-      const res = await execute("/api/files");
+      const res = await execute(`/api/files?section=${activeSection}&email=${encodeURIComponent(user!.email!)}`);
       if (cancelled) return;
       setFiles((res as { files?: SharedFile[] })?.files ?? []);
       setDataLoading(false);
@@ -58,7 +74,7 @@ export default function SharedFilesPage() {
     fetchFiles();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, reloadKey]);
+  }, [authLoading, activeSection, user?.email, reloadKey]);
 
   if (authLoading) return null;
 
@@ -79,6 +95,7 @@ export default function SharedFilesPage() {
 
   async function upload() {
     setFormError(""); setSuccessMsg("");
+    if (!activeSection) return;
     if (!pendingFile) return setFormError(t("sharedFileRequired"));
 
     setUploading(true);
@@ -91,6 +108,7 @@ export default function SharedFilesPage() {
           fileData: pendingFile.data,
           fileName: pendingFile.name,
           fileSize: pendingFile.size,
+          section: activeSection,
           uploadedByName: `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim() || "Employee",
           uploadedByEmail: user?.email || "",
           uploadedByRole: user?.role || "",
@@ -117,7 +135,7 @@ export default function SharedFilesPage() {
     setFiles((prev) => prev.filter((f) => f.id !== id));
   }
 
-  const canDelete = (f: SharedFile) => f.uploadedByEmail === user?.email || user?.role === "admin" || user?.role === "manager";
+  const canDelete = (f: SharedFile) => f.uploadedByEmail === user?.email || accessibleSections.some((s) => s.key === f.section);
 
   const homePath = user?.role === "admin" ? "/admin" : user?.role === "manager" ? "/manager" : "/employee";
 
@@ -133,77 +151,100 @@ export default function SharedFilesPage() {
           <LangToggle dark />
         </div>
 
-        {/* UPLOAD FORM */}
-        <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6">
-          {(formError) && <p className="text-red-500 text-sm mb-3">{formError}</p>}
-          {successMsg && <p className="text-green-600 text-sm mb-3">{successMsg}</p>}
-
-          <input
-            placeholder={t("fileTitlePlaceholder")}
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full p-3 rounded-lg border border-gray-300 outline-none bg-white/80 text-black mb-3"
-          />
-
-          <div className="mb-4">
-            {pendingFile ? (
-              <div className="flex items-center gap-3 flex-wrap">
-                <span className="text-sm text-[#F33615]">📎 {pendingFile.name} ({formatSize(pendingFile.size)})</span>
-                <button type="button" onClick={() => fileInputRef.current?.click()} className="text-xs text-blue-600 underline">
-                  {t("changeFile")}
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full py-6 rounded-xl border-2 border-dashed border-gray-300 text-gray-500 hover:border-[#F33615] hover:text-[#F33615] transition text-sm"
-              >
-                📎 {t("chooseFile")}
-              </button>
-            )}
-            <input ref={fileInputRef} type="file" onChange={handleFileChange} className="hidden" />
+        {accessibleSections.length === 0 ? (
+          <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6 text-center text-gray-500">
+            {t("noSectionAccess")}
           </div>
-
-          <button onClick={upload} disabled={uploading} className="w-full py-3 rounded-full text-white font-semibold bg-gradient-to-r from-[#F33615] to-[#ff6b4a] disabled:opacity-60">
-            {uploading ? t("sending") : t("uploadSharedFile")}
-          </button>
-        </div>
-
-        {/* FILE LIST */}
-        <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6">
-          {dataLoading ? (
-            <p className="text-center text-gray-500 py-4">{t("loading")}</p>
-          ) : files.length === 0 ? (
-            <p className="text-center text-gray-500 py-4">{t("noSharedFiles")}</p>
-          ) : (
-            <div className="space-y-2">
-              {files.map((f) => (
-                <div key={f.id} className="flex flex-wrap gap-3 justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
-                  <div className="min-w-0">
-                    <p className="font-medium text-black break-words">{f.title || f.fileName}</p>
-                    <p className="text-xs text-gray-500 break-words">📎 {f.fileName} {f.fileSize ? `· ${formatSize(f.fileSize)}` : ""}</p>
-                    <p className="text-xs text-gray-400">
-                      {t("uploadedBy")}: {f.uploadedByName}
-                      {f.uploadedByRole && <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-600">{f.uploadedByRole}</span>}
-                    </p>
-                    <p className="text-[11px] text-gray-400 mt-1">{f.createdAt ? new Date(f.createdAt).toLocaleString() : ""}</p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <a href={f.fileData} download={f.fileName} className="px-3 py-1.5 rounded-lg bg-[#F33615] text-white text-xs font-semibold hover:bg-[#d92c0f] transition">
-                      {t("download")}
-                    </a>
-                    {canDelete(f) && (
-                      <button onClick={() => deleteFile(f.id)} className="px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-gray-400 text-xs font-semibold hover:border-red-300 hover:text-red-600 transition">
-                        🗑
-                      </button>
-                    )}
-                  </div>
-                </div>
+        ) : (
+          <>
+            {/* SECTION TABS */}
+            <div className="flex flex-wrap gap-2">
+              {accessibleSections.map((s) => (
+                <button
+                  key={s.key}
+                  onClick={() => setActiveSection(s.key)}
+                  className={`px-3 py-1.5 rounded-full text-sm font-semibold transition ${
+                    activeSection === s.key ? "bg-[#F33615] text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  {s.icon} {t(s.labelKey)}
+                </button>
               ))}
             </div>
-          )}
-        </div>
+
+            {/* UPLOAD FORM */}
+            <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6">
+              {(formError) && <p className="text-red-500 text-sm mb-3">{formError}</p>}
+              {successMsg && <p className="text-green-600 text-sm mb-3">{successMsg}</p>}
+
+              <input
+                placeholder={t("fileTitlePlaceholder")}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full p-3 rounded-lg border border-gray-300 outline-none bg-white/80 text-black mb-3"
+              />
+
+              <div className="mb-4">
+                {pendingFile ? (
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <span className="text-sm text-[#F33615]">📎 {pendingFile.name} ({formatSize(pendingFile.size)})</span>
+                    <button type="button" onClick={() => fileInputRef.current?.click()} className="text-xs text-blue-600 underline">
+                      {t("changeFile")}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full py-6 rounded-xl border-2 border-dashed border-gray-300 text-gray-500 hover:border-[#F33615] hover:text-[#F33615] transition text-sm"
+                  >
+                    📎 {t("chooseFile")}
+                  </button>
+                )}
+                <input ref={fileInputRef} type="file" onChange={handleFileChange} className="hidden" />
+              </div>
+
+              <button onClick={upload} disabled={uploading} className="w-full py-3 rounded-full text-white font-semibold bg-gradient-to-r from-[#F33615] to-[#ff6b4a] disabled:opacity-60">
+                {uploading ? t("sending") : t("uploadSharedFile")}
+              </button>
+            </div>
+
+            {/* FILE LIST */}
+            <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6">
+              {dataLoading ? (
+                <p className="text-center text-gray-500 py-4">{t("loading")}</p>
+              ) : files.length === 0 ? (
+                <p className="text-center text-gray-500 py-4">{t("noSharedFiles")}</p>
+              ) : (
+                <div className="space-y-2">
+                  {files.map((f) => (
+                    <div key={f.id} className="flex flex-wrap gap-3 justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="min-w-0">
+                        <p className="font-medium text-black break-words">{f.title || f.fileName}</p>
+                        <p className="text-xs text-gray-500 break-words">📎 {f.fileName} {f.fileSize ? `· ${formatSize(f.fileSize)}` : ""}</p>
+                        <p className="text-xs text-gray-400">
+                          {t("uploadedBy")}: {f.uploadedByName}
+                          {f.uploadedByRole && <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-gray-200 text-gray-600">{f.uploadedByRole}</span>}
+                        </p>
+                        <p className="text-[11px] text-gray-400 mt-1">{f.createdAt ? new Date(f.createdAt).toLocaleString() : ""}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <a href={f.fileData} download={f.fileName} className="px-3 py-1.5 rounded-lg bg-[#F33615] text-white text-xs font-semibold hover:bg-[#d92c0f] transition">
+                          {t("download")}
+                        </a>
+                        {canDelete(f) && (
+                          <button onClick={() => deleteFile(f.id)} className="px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-gray-400 text-xs font-semibold hover:border-red-300 hover:text-red-600 transition">
+                            🗑
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

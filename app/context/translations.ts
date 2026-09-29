@@ -361,6 +361,13 @@ export const translations = {
     uploadedBy: "Uploaded by",
     deleteFileConfirm: "Delete this file?",
     download: "Download",
+    sectionGeneral: "General",
+    sectionMarketing: "Marketing",
+    sectionSales: "Sales",
+    sectionProgramming: "Programming",
+    sectionAI: "AI",
+    sectionDesign: "Design",
+    noSectionAccess: "You don't have access to any file section yet.",
 
     // ── Admin ───────────────────────────────────────────────────────────────
     adminPanel: "Admin Panel",
@@ -778,6 +785,13 @@ export const translations = {
     uploadedBy: "رفعه",
     deleteFileConfirm: "حذف هذا الملف؟",
     download: "تحميل",
+    sectionGeneral: "عام",
+    sectionMarketing: "التسويق",
+    sectionSales: "المبيعات",
+    sectionProgramming: "البرمجة",
+    sectionAI: "الذكاء الاصطناعي",
+    sectionDesign: "التصميم",
+    noSectionAccess: "ما عندك صلاحية على أي قسم ملفات حاليًا.",
 
     // ── Admin ───────────────────────────────────────────────────────────────
     adminPanel: "لوحة المسؤول",
