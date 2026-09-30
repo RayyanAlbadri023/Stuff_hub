@@ -527,6 +527,13 @@ export const translations = {
     tabGroupAccounts: "Accounts",
     tabGroupAccounting: "Accounting",
     tabGroupOther: "Other",
+    finHighlightTitle: "Highlight rows",
+    finHighlightFilterPlaceholder: "Or type any text to highlight (name, status, note...)",
+    finHighlightYellow: "Yellow",
+    finHighlightPurple: "Purple",
+    finHighlightGreen: "Green",
+    finClearHighlight: "Clear highlight",
+    finDuplicateHint: "Rows sharing the same name are highlighted automatically. Pick months or type a filter above to highlight anything else.",
   },
 
   ar: {
@@ -1055,6 +1062,13 @@ export const translations = {
     tabGroupAccounts: "الحسابات",
     tabGroupAccounting: "المحاسبة",
     tabGroupOther: "أخرى",
+    finHighlightTitle: "تظليل الصفوف",
+    finHighlightFilterPlaceholder: "أو اكتب أي نص للتظليل (اسم، حالة، ملاحظة...)",
+    finHighlightYellow: "أصفر",
+    finHighlightPurple: "بنفسجي",
+    finHighlightGreen: "أخضر",
+    finClearHighlight: "مسح التظليل",
+    finDuplicateHint: "الصفوف اللي تتشارك نفس الاسم تُظلَّل تلقائيًا. اختر أشهر أو اكتب فلتر فوق لتظليل أي شيء آخر.",
   },
 } as const;
 
