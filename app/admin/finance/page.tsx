@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/hooks/useAuth";
 import { useRequest } from "@/app/hooks/useRequest";
@@ -28,6 +28,7 @@ import {
   isBalanced,
   accountBalance,
 } from "@/app/lib/accounting";
+import { exportToExcel, parseExcelFile } from "@/app/lib/excelUtils";
 
 type DataMap = Record<FinanceType, FinanceRecord[]>;
 
@@ -236,6 +237,17 @@ export default function FinancePage() {
     { key: "trialBalance", icon: "⚖️", labelKey: "financeTrialBalance" },
   ];
 
+  // Groups tabs by theme so the (now sizeable) tab list reads as connected
+  // sections instead of one long flat row. Purely navigational — no data changes.
+  const TAB_GROUPS: { labelKey: TranslationKeys; keys: (typeof activeTab)[] }[] = [
+    { labelKey: "tabGroupDashboard", keys: ["overview"] },
+    { labelKey: "tabGroupSales", keys: ["invoices", "sales", "income", "refunds"] },
+    { labelKey: "tabGroupPurchases", keys: ["vendors", "expenses"] },
+    { labelKey: "tabGroupAccounts", keys: ["cashStatement", "cards"] },
+    { labelKey: "tabGroupAccounting", keys: ["chartOfAccounts", "journalEntries", "trialBalance"] },
+    { labelKey: "tabGroupOther", keys: ["assets", "contracts"] },
+  ];
+
   const activeModule = MODULES.find((m) => m.type === activeTab);
 
   return (
@@ -253,19 +265,30 @@ export default function FinancePage() {
           </div>
         </div>
 
-        {/* TABS */}
-        <div className="flex flex-wrap gap-2">
-          {TABS.map((tb) => (
-            <button
-              key={tb.key}
-              onClick={() => setActiveTab(tb.key)}
-              className={`px-3 py-1.5 rounded-full text-sm font-semibold transition ${
-                activeTab === tb.key ? "bg-[#F33615] text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              {tb.icon} {t(tb.labelKey)}
-            </button>
-          ))}
+        {/* TABS — grouped by theme so related sections stay visually connected */}
+        <div className="bg-gray-50 rounded-2xl border border-gray-200 p-3 space-y-2">
+          {TAB_GROUPS.map((group) => {
+            const groupTabs = TABS.filter((tb) => (group.keys as string[]).includes(tb.key as string));
+            if (groupTabs.length === 0) return null;
+            return (
+              <div key={group.labelKey} className="flex flex-wrap items-center gap-2">
+                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wide w-full sm:w-auto sm:min-w-[130px]">
+                  {t(group.labelKey)}
+                </span>
+                {groupTabs.map((tb) => (
+                  <button
+                    key={tb.key}
+                    onClick={() => setActiveTab(tb.key)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-semibold transition ${
+                      activeTab === tb.key ? "bg-[#F33615] text-white" : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-100"
+                    }`}
+                  >
+                    {tb.icon} {t(tb.labelKey)}
+                  </button>
+                ))}
+              </div>
+            );
+          })}
         </div>
 
         {dataLoading ? (
@@ -315,8 +338,11 @@ function FinanceModuleTab({
   const [q, setQ] = useState("");
   const [year, setYear] = useState("");
   const [month, setMonth] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState("");
+  const importInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { setForm({}); setEditingId(null); setError(""); }, [config.type]);
+  useEffect(() => { setForm({}); setEditingId(null); setError(""); setImportMsg(""); }, [config.type]);
 
   const years = useMemo(() => distinctYears(records), [records]);
   const filtered = useMemo(
@@ -395,11 +421,65 @@ function FinanceModuleTab({
     onChanged();
   };
 
+  const handleExport = () => {
+    const rows = filtered.map((r) => {
+      const rec = r as unknown as Record<string, unknown>;
+      const row: Record<string, unknown> = { name: r.name, date: r.date };
+      for (const f of config.fields) {
+        if (f.key === "date" || f.type === "file") continue;
+        row[f.key] = rec[f.key] ?? "";
+      }
+      return row;
+    });
+    exportToExcel(config.type, config.type, rows);
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setImportMsg("");
+    try {
+      const rows = await parseExcelFile(file);
+      const res = await execute(`/api/finance/${config.type}/import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rows }),
+      });
+      const r = res as { createdCount?: number; skipped?: { row: number; reason: string }[] } | null;
+      if (r) {
+        const created = r.createdCount ?? 0;
+        const skippedCount = r.skipped?.length ?? 0;
+        setImportMsg(`${t("finImportDone")}: ${created} ${t("finImportRecordsCreated")}${skippedCount ? `, ${skippedCount} ${t("finImportRowsSkipped")}` : ""}`);
+        onChanged();
+      } else {
+        setImportMsg(t("finImportFailed"));
+      }
+    } catch {
+      setImportMsg(t("finImportFailed"));
+    } finally {
+      setImporting(false);
+      e.target.value = "";
+    }
+  };
+
   const inputClass = "w-full p-2 border rounded-lg text-black text-sm";
 
   return (
     <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 space-y-5">
-      <h2 className="font-bold text-[#F33615] text-lg">{config.icon} {t(config.titleKey)}</h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-bold text-[#F33615] text-lg">{config.icon} {t(config.titleKey)}</h2>
+        <div className="flex items-center gap-2">
+          <button onClick={handleExport} className="px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-gray-600 text-xs font-semibold hover:border-[#F33615] hover:text-[#F33615] transition">
+            ⬇️ {t("excelExport")}
+          </button>
+          <button onClick={() => importInputRef.current?.click()} disabled={importing} className="px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-gray-600 text-xs font-semibold hover:border-[#F33615] hover:text-[#F33615] transition disabled:opacity-60">
+            ⬆️ {t("excelImport")}
+          </button>
+          <input ref={importInputRef} type="file" accept=".xlsx,.xls" onChange={handleImportFile} className="hidden" />
+        </div>
+      </div>
+      {importMsg && <p className="text-xs text-gray-600">{importMsg}</p>}
 
       {/* ADD FORM */}
       <div className="bg-white rounded-xl border border-gray-200 p-4">
@@ -777,6 +857,9 @@ function ChartOfAccountsTab({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState("");
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const typeLabelMap: Record<AccountType, TranslationKeys> = {
     asset: "accTypeAsset",
@@ -827,6 +910,42 @@ function ChartOfAccountsTab({
     onChanged();
   };
 
+  const handleExport = () => {
+    exportToExcel("chart-of-accounts", "Accounts", accounts.map((a) => {
+      const parent = accounts.find((p) => p.id === a.parentId);
+      return { code: a.code, name: a.name, type: a.type, parentCode: parent?.code || "" };
+    }));
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setImportMsg("");
+    try {
+      const rows = await parseExcelFile(file);
+      const res = await execute("/api/accounting/accounts/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rows }),
+      });
+      const r = res as { createdCount?: number; skipped?: { row: number; reason: string }[] } | null;
+      if (r) {
+        const created = r.createdCount ?? 0;
+        const skippedCount = r.skipped?.length ?? 0;
+        setImportMsg(`${t("finImportDone")}: ${created} ${t("finImportRecordsCreated")}${skippedCount ? `, ${skippedCount} ${t("finImportRowsSkipped")}` : ""}`);
+        onChanged();
+      } else {
+        setImportMsg(t("finImportFailed"));
+      }
+    } catch {
+      setImportMsg(t("finImportFailed"));
+    } finally {
+      setImporting(false);
+      e.target.value = "";
+    }
+  };
+
   const inputClass = "w-full p-2 border rounded-lg text-black text-sm";
   const grouped = ACCOUNT_TYPES.map((type) => ({
     type,
@@ -835,7 +954,19 @@ function ChartOfAccountsTab({
 
   return (
     <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 space-y-5">
-      <h2 className="font-bold text-[#F33615] text-lg">📒 {t("financeChartOfAccounts")}</h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-bold text-[#F33615] text-lg">📒 {t("financeChartOfAccounts")}</h2>
+        <div className="flex items-center gap-2">
+          <button onClick={handleExport} className="px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-gray-600 text-xs font-semibold hover:border-[#F33615] hover:text-[#F33615] transition">
+            ⬇️ {t("excelExport")}
+          </button>
+          <button onClick={() => importInputRef.current?.click()} disabled={importing} className="px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-gray-600 text-xs font-semibold hover:border-[#F33615] hover:text-[#F33615] transition disabled:opacity-60">
+            ⬆️ {t("excelImport")}
+          </button>
+          <input ref={importInputRef} type="file" accept=".xlsx,.xls" onChange={handleImportFile} className="hidden" />
+        </div>
+      </div>
+      {importMsg && <p className="text-xs text-gray-600">{importMsg}</p>}
 
       {/* ADD/EDIT FORM */}
       <div className="bg-white rounded-xl border border-gray-200 p-4">
@@ -945,6 +1076,9 @@ function JournalEntriesTab({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState("");
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const totalDebit = sumDebits(lines);
   const totalCredit = sumCredits(lines);
@@ -1012,12 +1146,70 @@ function JournalEntriesTab({
     onChanged();
   };
 
+  const handleExport = () => {
+    const rows: Record<string, unknown>[] = [];
+    for (const e of sorted) {
+      for (const l of e.lines) {
+        const a = accounts.find((x) => x.id === l.accountId);
+        rows.push({
+          date: e.date,
+          description: e.description,
+          accountCode: a?.code || "",
+          debit: l.debit || 0,
+          credit: l.credit || 0,
+        });
+      }
+    }
+    exportToExcel("journal-entries", "Journal", rows);
+  };
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setImportMsg("");
+    try {
+      const rows = await parseExcelFile(file);
+      const res = await execute("/api/accounting/entries/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rows }),
+      });
+      const r = res as { createdCount?: number; skipped?: { row: number; reason: string }[] } | null;
+      if (r) {
+        const created = r.createdCount ?? 0;
+        const skippedCount = r.skipped?.length ?? 0;
+        setImportMsg(`${t("finImportDone")}: ${created} ${t("finImportRecordsCreated")}${skippedCount ? `, ${skippedCount} ${t("finImportRowsSkipped")}` : ""}`);
+        onChanged();
+      } else {
+        setImportMsg(t("finImportFailed"));
+      }
+    } catch {
+      setImportMsg(t("finImportFailed"));
+    } finally {
+      setImporting(false);
+      e.target.value = "";
+    }
+  };
+
   const inputClass = "w-full p-2 border rounded-lg text-black text-sm";
   const sorted = useMemo(() => [...entries].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)), [entries]);
 
   return (
     <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 space-y-5">
-      <h2 className="font-bold text-[#F33615] text-lg">🧾 {t("financeJournalEntries")}</h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-bold text-[#F33615] text-lg">🧾 {t("financeJournalEntries")}</h2>
+        <div className="flex items-center gap-2">
+          <button onClick={handleExport} className="px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-gray-600 text-xs font-semibold hover:border-[#F33615] hover:text-[#F33615] transition">
+            ⬇️ {t("excelExport")}
+          </button>
+          <button onClick={() => importInputRef.current?.click()} disabled={importing} className="px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-gray-600 text-xs font-semibold hover:border-[#F33615] hover:text-[#F33615] transition disabled:opacity-60">
+            ⬆️ {t("excelImport")}
+          </button>
+          <input ref={importInputRef} type="file" accept=".xlsx,.xls" onChange={handleImportFile} className="hidden" />
+        </div>
+      </div>
+      {importMsg && <p className="text-xs text-gray-600">{importMsg}</p>}
 
       {/* ADD/EDIT FORM */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
