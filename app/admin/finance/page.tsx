@@ -17,6 +17,17 @@ import {
   currentYear,
   distinctYears,
 } from "@/app/lib/finance";
+import {
+  ACCOUNT_TYPES,
+  type Account,
+  type AccountType,
+  type JournalEntry,
+  type JournalLine,
+  sumDebits,
+  sumCredits,
+  isBalanced,
+  accountBalance,
+} from "@/app/lib/accounting";
 
 type DataMap = Record<FinanceType, FinanceRecord[]>;
 
@@ -163,14 +174,22 @@ export default function FinancePage() {
   const { execute } = useRequest();
   const { t, isRTL } = useLang();
 
-  const [activeTab, setActiveTab] = useState<"overview" | FinanceType | "cashStatement" | "trialBalance">("overview");
+  const [activeTab, setActiveTab] = useState<
+    "overview" | FinanceType | "cashStatement" | "trialBalance" | "chartOfAccounts" | "journalEntries"
+  >("overview");
   const [data, setData] = useState<DataMap>(EMPTY_DATA);
   const [dataLoading, setDataLoading] = useState(true);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
 
   const loadAll = useCallback(async () => {
     setDataLoading(true);
     const types: FinanceType[] = ["invoices", "assets", "vendors", "sales", "income", "expenses", "refunds", "cards"];
-    const results = await Promise.all(types.map((tpe) => execute(`/api/finance/${tpe}`)));
+    const [results, accountsRes, entriesRes] = await Promise.all([
+      Promise.all(types.map((tpe) => execute(`/api/finance/${tpe}`))),
+      execute("/api/accounting/accounts"),
+      execute("/api/accounting/entries"),
+    ]);
     setData((prev) => {
       const next = { ...prev };
       types.forEach((tpe, i) => {
@@ -179,6 +198,8 @@ export default function FinancePage() {
       });
       return next;
     });
+    setAccounts((accountsRes as { accounts?: Account[] } | null)?.accounts ?? []);
+    setJournalEntries((entriesRes as { entries?: JournalEntry[] } | null)?.entries ?? []);
     setDataLoading(false);
   }, [execute]);
 
@@ -186,6 +207,16 @@ export default function FinancePage() {
     const res = await execute(`/api/finance/${tpe}`);
     const records = (res as { records?: FinanceRecord[] } | null)?.records ?? [];
     setData((prev) => ({ ...prev, [tpe]: records }));
+  }, [execute]);
+
+  const reloadAccounts = useCallback(async () => {
+    const res = await execute("/api/accounting/accounts");
+    setAccounts((res as { accounts?: Account[] } | null)?.accounts ?? []);
+  }, [execute]);
+
+  const reloadEntries = useCallback(async () => {
+    const res = await execute("/api/accounting/entries");
+    setJournalEntries((res as { entries?: JournalEntry[] } | null)?.entries ?? []);
   }, [execute]);
 
   useEffect(() => {
@@ -198,6 +229,8 @@ export default function FinancePage() {
 
   const TABS: { key: typeof activeTab; icon: string; labelKey: TranslationKeys }[] = [
     { key: "overview", icon: "📊", labelKey: "financeOverview" },
+    { key: "chartOfAccounts", icon: "📒", labelKey: "financeChartOfAccounts" },
+    { key: "journalEntries", icon: "🧾", labelKey: "financeJournalEntries" },
     ...MODULES.map((m) => ({ key: m.type, icon: m.icon, labelKey: m.titleKey })),
     { key: "cashStatement", icon: "📑", labelKey: "financeCashStatement" },
     { key: "trialBalance", icon: "⚖️", labelKey: "financeTrialBalance" },
@@ -240,6 +273,12 @@ export default function FinancePage() {
         ) : (
           <>
             {activeTab === "overview" && <OverviewTab data={data} t={t} />}
+            {activeTab === "chartOfAccounts" && (
+              <ChartOfAccountsTab accounts={accounts} entries={journalEntries} t={t} execute={execute} onChanged={reloadAccounts} />
+            )}
+            {activeTab === "journalEntries" && (
+              <JournalEntriesTab accounts={accounts} entries={journalEntries} t={t} execute={execute} onChanged={reloadEntries} />
+            )}
             {activeTab === "cashStatement" && <CashStatementTab data={data} t={t} />}
             {activeTab === "trialBalance" && <TrialBalanceTab data={data} t={t} />}
             {activeModule && (
@@ -715,6 +754,418 @@ function TrialBalanceTab({ data, t }: { data: DataMap; t: (k: TranslationKeys) =
               <td className="py-3 px-4 font-bold text-black">{t("finNetBalance")}</td>
               <td className={`py-3 px-4 font-bold text-right ${net >= 0 ? "text-emerald-600" : "text-red-600"}`}>{net.toFixed(2)}</td>
             </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// ───────────────────────────── Chart of Accounts ───────────────────────────
+
+function ChartOfAccountsTab({
+  accounts, entries, t, execute, onChanged,
+}: {
+  accounts: Account[];
+  entries: JournalEntry[];
+  t: (k: TranslationKeys) => string;
+  execute: (input: RequestInfo, init?: RequestInit) => Promise<unknown>;
+  onChanged: () => void;
+}) {
+  const emptyForm = { code: "", name: "", type: "asset" as AccountType, parentId: "" };
+  const [form, setForm] = useState(emptyForm);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const typeLabelMap: Record<AccountType, TranslationKeys> = {
+    asset: "accTypeAsset",
+    liability: "accTypeLiability",
+    equity: "accTypeEquity",
+    revenue: "accTypeRevenue",
+    expense: "accTypeExpense",
+  };
+  const typeLabel = (type: AccountType) => t(typeLabelMap[type]);
+
+  const save = async () => {
+    setError("");
+    if (!form.code.trim() || !form.name.trim()) return setError(t("accCodeRequired"));
+    setSaving(true);
+    const body = { code: form.code.trim(), name: form.name.trim(), type: form.type, parentId: form.parentId || "" };
+    const url = editingId ? `/api/accounting/accounts/${editingId}` : "/api/accounting/accounts";
+    const res = await execute(url, {
+      method: editingId ? "PUT" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    setSaving(false);
+    if (res) {
+      setForm(emptyForm);
+      setEditingId(null);
+      onChanged();
+    } else {
+      setError("Error");
+    }
+  };
+
+  const startEdit = (a: Account) => {
+    setForm({ code: a.code, name: a.name, type: a.type, parentId: a.parentId || "" });
+    setEditingId(a.id);
+    setError("");
+  };
+
+  const cancelEdit = () => {
+    setForm(emptyForm);
+    setEditingId(null);
+    setError("");
+  };
+
+  const remove = async (id: string) => {
+    if (!confirm(t("accDeleteConfirm"))) return;
+    if (editingId === id) cancelEdit();
+    await execute(`/api/accounting/accounts/${id}`, { method: "DELETE" });
+    onChanged();
+  };
+
+  const inputClass = "w-full p-2 border rounded-lg text-black text-sm";
+  const grouped = ACCOUNT_TYPES.map((type) => ({
+    type,
+    list: accounts.filter((a) => a.type === type).sort((a, b) => a.code.localeCompare(b.code)),
+  }));
+
+  return (
+    <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 space-y-5">
+      <h2 className="font-bold text-[#F33615] text-lg">📒 {t("financeChartOfAccounts")}</h2>
+
+      {/* ADD/EDIT FORM */}
+      <div className="bg-white rounded-xl border border-gray-200 p-4">
+        {error && <p className="text-red-500 text-xs mb-2">{error}</p>}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div>
+            <label className="text-xs text-gray-600 block mb-1">{t("accCode")}</label>
+            <input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} className={inputClass} />
+          </div>
+          <div>
+            <label className="text-xs text-gray-600 block mb-1">{t("accName")}</label>
+            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inputClass} />
+          </div>
+          <div>
+            <label className="text-xs text-gray-600 block mb-1">{t("accType")}</label>
+            <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as AccountType })} className={inputClass}>
+              {ACCOUNT_TYPES.map((ty) => <option key={ty} value={ty}>{typeLabel(ty)}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-gray-600 block mb-1">{t("accParent")}</label>
+            <select value={form.parentId} onChange={(e) => setForm({ ...form, parentId: e.target.value })} className={inputClass}>
+              <option value="">{t("accNoParent")}</option>
+              {accounts.filter((a) => a.id !== editingId).map((a) => (
+                <option key={a.id} value={a.id}>{a.code} — {a.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="mt-3 flex gap-2">
+          <button onClick={save} disabled={saving} className="px-4 py-2 rounded-lg text-white text-sm font-semibold bg-[#030405] hover:bg-[#F33615] transition disabled:opacity-60">
+            {editingId ? `💾 ${t("saveChanges")}` : `➕ ${t("accAddAccount")}`}
+          </button>
+          {editingId && (
+            <button onClick={cancelEdit} className="px-4 py-2 rounded-lg text-sm font-semibold border border-gray-300 text-gray-600 hover:bg-gray-100 transition">
+              {t("cancel")}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ACCOUNTS GROUPED BY TYPE */}
+      <div className="space-y-4">
+        {grouped.map(({ type, list }) => (
+          <div key={type} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="px-4 py-2 bg-gray-100 font-semibold text-sm text-gray-700">{typeLabel(type)}</div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-gray-600 border-b border-gray-200">
+                    <th className="text-start py-2 px-3">{t("accCode")}</th>
+                    <th className="text-start py-2 px-3">{t("accName")}</th>
+                    <th className="text-start py-2 px-3">{t("accParent")}</th>
+                    <th className="text-start py-2 px-3">{t("accBalance")}</th>
+                    <th className="text-start py-2 px-3">{t("actions")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {list.length === 0 ? (
+                    <tr><td colSpan={5} className="text-center text-gray-500 py-4">{t("accNoAccounts")}</td></tr>
+                  ) : (
+                    list.map((a) => {
+                      const parent = accounts.find((p) => p.id === a.parentId);
+                      return (
+                        <tr key={a.id} className="border-b border-gray-100">
+                          <td className="py-2 px-3 text-black">{a.code}</td>
+                          <td className="py-2 px-3 text-black">{a.name}</td>
+                          <td className="py-2 px-3 text-gray-500">{parent ? `${parent.code} — ${parent.name}` : "—"}</td>
+                          <td className="py-2 px-3 font-semibold text-black">{accountBalance(entries, a).toFixed(2)}</td>
+                          <td className="py-2 px-3">
+                            <div className="flex gap-1">
+                              <button onClick={() => startEdit(a)} className="px-2.5 py-1 rounded-lg bg-white border border-gray-200 text-gray-400 text-xs font-semibold hover:border-blue-300 hover:text-blue-600 transition">✏️</button>
+                              <button onClick={() => remove(a.id)} className="px-2.5 py-1 rounded-lg bg-white border border-gray-200 text-gray-400 text-xs font-semibold hover:border-red-300 hover:text-red-600 transition">🗑</button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ───────────────────────────── Journal Entries (double-entry) ──────────────
+
+function JournalEntriesTab({
+  accounts, entries, t, execute, onChanged,
+}: {
+  accounts: Account[];
+  entries: JournalEntry[];
+  t: (k: TranslationKeys) => string;
+  execute: (input: RequestInfo, init?: RequestInit) => Promise<unknown>;
+  onChanged: () => void;
+}) {
+  const emptyLine = (): JournalLine => ({ accountId: "", debit: 0, credit: 0, note: "" });
+  const [date, setDate] = useState("");
+  const [description, setDescription] = useState("");
+  const [lines, setLines] = useState<JournalLine[]>([emptyLine(), emptyLine()]);
+  const [fileData, setFileData] = useState("");
+  const [fileName, setFileName] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const totalDebit = sumDebits(lines);
+  const totalCredit = sumCredits(lines);
+  const balanced = isBalanced(lines);
+
+  const accountLabel = (id: string) => {
+    const a = accounts.find((x) => x.id === id);
+    return a ? `${a.code} — ${a.name}` : "—";
+  };
+
+  const updateLine = (idx: number, patch: Partial<JournalLine>) => {
+    setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)));
+  };
+  const addLine = () => setLines((prev) => [...prev, emptyLine()]);
+  const removeLine = (idx: number) => setLines((prev) => prev.filter((_, i) => i !== idx));
+
+  const resetForm = () => {
+    setDate("");
+    setDescription("");
+    setLines([emptyLine(), emptyLine()]);
+    setFileData("");
+    setFileName("");
+    setEditingId(null);
+    setError("");
+  };
+
+  const save = async () => {
+    setError("");
+    if (!date) return setError(t("date"));
+    if (!description.trim()) return setError(t("jeEntryDescRequired"));
+    const activeLines = lines.filter((l) => l.accountId && ((Number(l.debit) || 0) > 0 || (Number(l.credit) || 0) > 0));
+    if (activeLines.length < 2) return setError(t("jeNeedTwoLines"));
+    if (!isBalanced(activeLines)) return setError(t("jeUnbalanced"));
+    setSaving(true);
+    const body = { date, description: description.trim(), lines: activeLines, fileData, fileName };
+    const url = editingId ? `/api/accounting/entries/${editingId}` : "/api/accounting/entries";
+    const res = await execute(url, {
+      method: editingId ? "PUT" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    setSaving(false);
+    if (res) {
+      resetForm();
+      onChanged();
+    } else {
+      setError("Error");
+    }
+  };
+
+  const startEdit = (e: JournalEntry) => {
+    setDate(e.date);
+    setDescription(e.description);
+    setLines(e.lines.length ? e.lines.map((l) => ({ ...l })) : [emptyLine(), emptyLine()]);
+    setFileData(e.fileData || "");
+    setFileName(e.fileName || "");
+    setEditingId(e.id);
+    setError("");
+  };
+
+  const remove = async (id: string) => {
+    if (!confirm(t("jeDeleteConfirm"))) return;
+    if (editingId === id) resetForm();
+    await execute(`/api/accounting/entries/${id}`, { method: "DELETE" });
+    onChanged();
+  };
+
+  const inputClass = "w-full p-2 border rounded-lg text-black text-sm";
+  const sorted = useMemo(() => [...entries].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)), [entries]);
+
+  return (
+    <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 space-y-5">
+      <h2 className="font-bold text-[#F33615] text-lg">🧾 {t("financeJournalEntries")}</h2>
+
+      {/* ADD/EDIT FORM */}
+      <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+        {error && <p className="text-red-500 text-xs">{error}</p>}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div>
+            <label className="text-xs text-gray-600 block mb-1">{t("date")}</label>
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputClass} />
+          </div>
+          <div className="lg:col-span-2">
+            <label className="text-xs text-gray-600 block mb-1">{t("jeDescription")}</label>
+            <input value={description} onChange={(e) => setDescription(e.target.value)} className={inputClass} />
+          </div>
+          <div>
+            <label className="text-xs text-gray-600 block mb-1">{t("jeAttachment")}</label>
+            <input
+              type="file"
+              accept="image/*,application/pdf"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = () => {
+                  setFileData(reader.result as string);
+                  setFileName(file.name);
+                };
+                reader.readAsDataURL(file);
+              }}
+              className="w-full text-xs text-gray-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200"
+            />
+            {fileName && <p className="text-[10px] text-gray-500 mt-1 truncate">📎 {fileName}</p>}
+          </div>
+        </div>
+
+        <div className="border border-gray-200 rounded-lg overflow-hidden overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-gray-600 bg-gray-50 border-b border-gray-200">
+                <th className="text-start py-2 px-3">{t("jeAccount")}</th>
+                <th className="text-start py-2 px-3">{t("jeDebit")}</th>
+                <th className="text-start py-2 px-3">{t("jeCredit")}</th>
+                <th className="text-start py-2 px-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {lines.map((l, idx) => (
+                <tr key={idx} className="border-b border-gray-100">
+                  <td className="py-2 px-3">
+                    <select value={l.accountId} onChange={(e) => updateLine(idx, { accountId: e.target.value })} className={inputClass}>
+                      <option value="">{t("jeSelectAccount")}</option>
+                      {accounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.name}</option>)}
+                    </select>
+                  </td>
+                  <td className="py-2 px-3">
+                    <input
+                      type="number" step="0.01" value={l.debit || ""}
+                      onChange={(e) => updateLine(idx, { debit: Number(e.target.value) || 0, credit: 0 })}
+                      className={inputClass}
+                    />
+                  </td>
+                  <td className="py-2 px-3">
+                    <input
+                      type="number" step="0.01" value={l.credit || ""}
+                      onChange={(e) => updateLine(idx, { credit: Number(e.target.value) || 0, debit: 0 })}
+                      className={inputClass}
+                    />
+                  </td>
+                  <td className="py-2 px-3">
+                    {lines.length > 2 && (
+                      <button onClick={() => removeLine(idx)} className="px-2 py-1 rounded-lg bg-white border border-gray-200 text-gray-400 text-xs hover:border-red-300 hover:text-red-600 transition">🗑</button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <button onClick={addLine} className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-300 text-gray-600 hover:bg-gray-100 transition">
+            ➕ {t("jeAddLine")}
+          </button>
+          <div className="flex flex-wrap items-center gap-4 text-sm">
+            <span className="text-gray-600">{t("jeTotalDebit")}: <strong className="text-black">{totalDebit.toFixed(2)}</strong></span>
+            <span className="text-gray-600">{t("jeTotalCredit")}: <strong className="text-black">{totalCredit.toFixed(2)}</strong></span>
+            <span className={`font-semibold ${balanced ? "text-emerald-600" : "text-red-600"}`}>
+              {balanced ? `✓ ${t("jeBalanced")}` : `⚠ ${t("jeUnbalanced")}`}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <button onClick={save} disabled={saving} className="px-4 py-2 rounded-lg text-white text-sm font-semibold bg-[#030405] hover:bg-[#F33615] transition disabled:opacity-60">
+            {editingId ? `💾 ${t("saveChanges")}` : `➕ ${t("jePostEntry")}`}
+          </button>
+          {editingId && (
+            <button onClick={resetForm} className="px-4 py-2 rounded-lg text-sm font-semibold border border-gray-300 text-gray-600 hover:bg-gray-100 transition">
+              {t("cancel")}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* LIST */}
+      <div className="overflow-x-auto bg-white rounded-xl border border-gray-200">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-gray-600 border-b border-gray-200">
+              <th className="text-start py-2 px-3">{t("date")}</th>
+              <th className="text-start py-2 px-3">{t("jeDescription")}</th>
+              <th className="text-start py-2 px-3">{t("jeLines")}</th>
+              <th className="text-start py-2 px-3">{t("jeTotalDebit")}</th>
+              <th className="text-start py-2 px-3">{t("jeAttachment")}</th>
+              <th className="text-start py-2 px-3">{t("actions")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.length === 0 ? (
+              <tr><td colSpan={6} className="text-center text-gray-500 py-6">{t("jeNoEntries")}</td></tr>
+            ) : (
+              sorted.map((e) => (
+                <tr key={e.id} className="border-b border-gray-100 align-top">
+                  <td className="py-2 px-3 text-black">{e.date}</td>
+                  <td className="py-2 px-3 text-black">{e.description}</td>
+                  <td className="py-2 px-3 text-gray-600 text-xs">
+                    {e.lines.map((l, i) => (
+                      <div key={i}>
+                        {accountLabel(l.accountId)}: {(Number(l.debit) || 0) > 0 ? `+${Number(l.debit).toFixed(2)}` : `-${Number(l.credit).toFixed(2)}`}
+                      </div>
+                    ))}
+                  </td>
+                  <td className="py-2 px-3 font-semibold text-black">{sumDebits(e.lines).toFixed(2)}</td>
+                  <td className="py-2 px-3">
+                    {e.fileData ? (
+                      <a href={e.fileData} download={e.fileName || "attachment"} className="text-[#F33615] underline text-xs">
+                        📎 {e.fileName || t("jeAttachment")}
+                      </a>
+                    ) : "—"}
+                  </td>
+                  <td className="py-2 px-3">
+                    <div className="flex gap-1">
+                      <button onClick={() => startEdit(e)} className="px-2.5 py-1 rounded-lg bg-white border border-gray-200 text-gray-400 text-xs font-semibold hover:border-blue-300 hover:text-blue-600 transition">✏️</button>
+                      <button onClick={() => remove(e.id)} className="px-2.5 py-1 rounded-lg bg-white border border-gray-200 text-gray-400 text-xs font-semibold hover:border-red-300 hover:text-red-600 transition">🗑</button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
