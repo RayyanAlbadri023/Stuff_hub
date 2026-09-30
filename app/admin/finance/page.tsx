@@ -63,6 +63,7 @@ const MODULES: ModuleConfig[] = [
         { value: "overdue", labelKey: "finInvoiceStatusOverdue" },
       ] },
       { key: "note", labelKey: "finNote", type: "text" },
+      { key: "file", labelKey: "finInvoiceFile", type: "file" },
     ],
   },
   {
@@ -137,14 +138,15 @@ const MODULES: ModuleConfig[] = [
     ],
   },
   {
-    type: "contracts", icon: "📜", titleKey: "financeContracts", nameLabelKey: "finNameContract",
+    type: "contracts", icon: "📜", titleKey: "financeContracts", nameLabelKey: "finNameContract", showTotal: true,
     fields: [
       { key: "date", labelKey: "finContractStart", type: "date" },
       { key: "endDate", labelKey: "finContractEnd", type: "date" },
+      { key: "amount", labelKey: "finAmountDue", type: "number" },
       { key: "bankGuarantee", labelKey: "finBankGuarantee", type: "file" },
       { key: "paymentDate", labelKey: "finPaymentDate", type: "date" },
       { key: "note", labelKey: "finNote", type: "text" },
-      { key: "file", labelKey: "finAttachment", type: "file" },
+      { key: "file", labelKey: "finContractFile", type: "file" },
     ],
   },
 ];
@@ -268,13 +270,14 @@ function FinanceModuleTab({
   onChanged: () => void;
 }) {
   const [form, setForm] = useState<Record<string, string>>({});
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [q, setQ] = useState("");
   const [year, setYear] = useState("");
   const [month, setMonth] = useState("");
 
-  useEffect(() => { setForm({}); setError(""); }, [config.type]);
+  useEffect(() => { setForm({}); setEditingId(null); setError(""); }, [config.type]);
 
   const years = useMemo(() => distinctYears(records), [records]);
   const filtered = useMemo(
@@ -283,7 +286,7 @@ function FinanceModuleTab({
   );
   const total = useMemo(() => sumAmount(filtered), [filtered]);
 
-  const add = async () => {
+  const save = async () => {
     setError("");
     if (!form.name || !form.name.trim()) return setError(t("finNoRecords"));
     if (!form.date) return setError(t("date"));
@@ -304,22 +307,51 @@ function FinanceModuleTab({
       }
       if (form[f.key] !== undefined) body[f.key] = f.type === "number" ? Number(form[f.key]) || 0 : form[f.key];
     }
-    const res = await execute(`/api/finance/${config.type}`, {
-      method: "POST",
+    const url = editingId ? `/api/finance/${config.type}/${editingId}` : `/api/finance/${config.type}`;
+    const res = await execute(url, {
+      method: editingId ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
     setSaving(false);
     if (res) {
       setForm({});
+      setEditingId(null);
       onChanged();
     } else {
       setError("Error");
     }
   };
 
+  const startEdit = (r: FinanceRecord) => {
+    const rec = r as unknown as Record<string, string | number | undefined>;
+    const next: Record<string, string> = { name: r.name, date: r.date };
+    for (const f of config.fields) {
+      if (f.key === "date") continue;
+      if (f.type === "file") {
+        const dataKey = f.key === "file" ? "fileData" : `${f.key}Data`;
+        const nameKey = f.key === "file" ? "fileName" : `${f.key}Name`;
+        if (rec[dataKey]) next[f.key] = String(rec[dataKey]);
+        if (rec[nameKey]) next[`${f.key}Name`] = String(rec[nameKey]);
+        continue;
+      }
+      const val = rec[f.key];
+      next[f.key] = val === undefined || val === null ? "" : String(val);
+    }
+    setForm(next);
+    setEditingId(r.id);
+    setError("");
+  };
+
+  const cancelEdit = () => {
+    setForm({});
+    setEditingId(null);
+    setError("");
+  };
+
   const remove = async (id: string) => {
     if (!confirm(t("finDeleteConfirm"))) return;
+    if (editingId === id) cancelEdit();
     await execute(`/api/finance/${config.type}/${id}`, { method: "DELETE" });
     onChanged();
   };
@@ -374,9 +406,16 @@ function FinanceModuleTab({
             </div>
           ))}
         </div>
-        <button onClick={add} disabled={saving} className="mt-3 px-4 py-2 rounded-lg text-white text-sm font-semibold bg-[#030405] hover:bg-[#F33615] transition disabled:opacity-60">
-          ➕ {t("finAddRecord")}
-        </button>
+        <div className="mt-3 flex gap-2">
+          <button onClick={save} disabled={saving} className="px-4 py-2 rounded-lg text-white text-sm font-semibold bg-[#030405] hover:bg-[#F33615] transition disabled:opacity-60">
+            {editingId ? `💾 ${t("saveChanges")}` : `➕ ${t("finAddRecord")}`}
+          </button>
+          {editingId && (
+            <button onClick={cancelEdit} className="px-4 py-2 rounded-lg text-sm font-semibold border border-gray-300 text-gray-600 hover:bg-gray-100 transition">
+              {t("cancel")}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* SEARCH / FILTER */}
@@ -442,7 +481,10 @@ function FinanceModuleTab({
                     </td>
                   ))}
                   <td className="py-2 px-3">
-                    <button onClick={() => remove(r.id)} className="px-2.5 py-1 rounded-lg bg-white border border-gray-200 text-gray-400 text-xs font-semibold hover:border-red-300 hover:text-red-600 transition">🗑</button>
+                    <div className="flex gap-1">
+                      <button onClick={() => startEdit(r)} className="px-2.5 py-1 rounded-lg bg-white border border-gray-200 text-gray-400 text-xs font-semibold hover:border-blue-300 hover:text-blue-600 transition">✏️</button>
+                      <button onClick={() => remove(r.id)} className="px-2.5 py-1 rounded-lg bg-white border border-gray-200 text-gray-400 text-xs font-semibold hover:border-red-300 hover:text-red-600 transition">🗑</button>
+                    </div>
                   </td>
                 </tr>
               ))
