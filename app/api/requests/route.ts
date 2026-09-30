@@ -2,6 +2,16 @@ import { NextResponse, NextRequest } from "next/server";
 import db from "@/app/lib/db";
 import { computeVacationBalance, type VacationRecord } from "@/app/lib/vacationBalance";
 
+// Inclusive day count between two "YYYY-MM-DD" dates, computed server-side so it
+// can't be spoofed by whatever value the client sent.
+function daysBetweenInclusive(from: string, to: string): number {
+  const start = new Date(`${from}T00:00:00`);
+  const end = new Date(`${to}T00:00:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0;
+  const diffDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  return diffDays >= 0 ? diffDays + 1 : 0;
+}
+
 export async function GET() {
   try {
     const [reqSnap, vacSnap] = await Promise.all([
@@ -12,7 +22,7 @@ export async function GET() {
     const requests: any[] = [];
     reqSnap.forEach((child) => {
       const d = child.val();
-      requests.push({ id: child.key, userId: d.userId || null, name: d.name, email: d.email, type: d.type, excuseType: d.excuseType || null, message: d.message || null, start: d.start || null, end: null, days: null, status: d.status, createdAt: d.createdAt, attachment: d.attachment || null, attachmentName: d.attachmentName || null });
+      requests.push({ id: child.key, userId: d.userId || null, name: d.name, email: d.email, type: d.type, excuseType: d.excuseType || null, message: d.message || null, start: d.start || null, end: d.end || null, days: typeof d.days === "number" ? d.days : null, status: d.status, createdAt: d.createdAt, attachment: d.attachment || null, attachmentName: d.attachmentName || null });
     });
 
     const vacations: any[] = [];
@@ -78,6 +88,15 @@ export async function POST(req: NextRequest) {
       if (!body.message || !String(body.message).trim() || !body.attachment) {
         return NextResponse.json({ message: "Reason and attachment are required" }, { status: 400 });
       }
+      const start = body.start || "";
+      const end = body.end || "";
+      if (!start || !end) {
+        return NextResponse.json({ message: "Absence start and end dates are required" }, { status: 400 });
+      }
+      if (end < start) {
+        return NextResponse.json({ message: "End date must be on or after the start date" }, { status: 400 });
+      }
+      const days = daysBetweenInclusive(start, end);
       await db.ref("requests").push({
         userId: body.userId || null,
         name: body.name || "Employee",
@@ -85,7 +104,9 @@ export async function POST(req: NextRequest) {
         type,
         excuseType: body.excuseType,
         message: body.message || "",
-        start: body.start || "",
+        start,
+        end,
+        days,
         attachment: body.attachment,
         attachmentName: body.attachmentName || "",
         status: "pending",

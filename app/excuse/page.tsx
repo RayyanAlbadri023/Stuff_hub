@@ -7,6 +7,16 @@ import { useRequest } from "@/app/hooks/useRequest";
 import { useLang } from "@/app/context/LangContext";
 import LangToggle from "@/app/components/LangToggle";
 
+// Inclusive day count between two "YYYY-MM-DD" dates (e.g. Mon→Mon = 1 day, Mon→Tue = 2 days).
+function daysBetweenInclusive(from: string, to: string): number {
+  if (!from || !to) return 0;
+  const start = new Date(`${from}T00:00:00`);
+  const end = new Date(`${to}T00:00:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0;
+  const diffDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  return diffDays >= 0 ? diffDays + 1 : 0;
+}
+
 export default function ExcusePage() {
   const router = useRouter();
   const { user, loading } = useAuth();
@@ -14,7 +24,8 @@ export default function ExcusePage() {
   const { t, isRTL } = useLang();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [date, setDate] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [excuseType, setExcuseType] = useState("");
   const [message, setMessage] = useState("");
   const [attachment, setAttachment] = useState<string | null>(null);
@@ -36,9 +47,12 @@ export default function ExcusePage() {
     reader.readAsDataURL(file);
   }
 
+  const days = daysBetweenInclusive(dateFrom, dateTo);
+
   async function sendExcuse() {
     setFormError(""); setSuccessMsg("");
-    if (!date) return setFormError(t("excuseDateRequired"));
+    if (!dateFrom || !dateTo) return setFormError(t("excuseDateRequired"));
+    if (dateTo < dateFrom) return setFormError(t("excuseDateRangeInvalid"));
     if (!excuseType) return setFormError(t("excuseTypeRequired"));
     if (!message.trim() || !attachment) return setFormError(t("excuseEmpty"));
 
@@ -52,7 +66,9 @@ export default function ExcusePage() {
         type: "excuse",
         excuseType,
         message,
-        start: date,
+        start: dateFrom,
+        end: dateTo,
+        days,
         attachment,
         attachmentName,
       }),
@@ -60,7 +76,7 @@ export default function ExcusePage() {
     if (!result) return;
 
     setSuccessMsg(t("excuseSuccess"));
-    setDate(""); setExcuseType(""); setMessage(""); setAttachment(null); setAttachmentName("");
+    setDateFrom(""); setDateTo(""); setExcuseType(""); setMessage(""); setAttachment(null); setAttachmentName("");
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
@@ -75,13 +91,35 @@ export default function ExcusePage() {
           {(error || formError) && <p className="text-red-500 text-sm mb-3">{formError || error}</p>}
           {successMsg && <p className="text-green-600 text-sm mb-3">{successMsg}</p>}
 
-          <label className="text-sm text-gray-600 block mb-1">{t("excuseDate")}</label>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-full p-3 rounded-lg border border-gray-300 outline-none bg-white/80 text-black mb-4"
-          />
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div>
+              <label className="text-sm text-gray-600 block mb-1">{t("excuseDateFrom")}</label>
+              <input
+                type="date"
+                value={dateFrom}
+                max={dateTo || undefined}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="w-full p-3 rounded-lg border border-gray-300 outline-none bg-white/80 text-black"
+              />
+            </div>
+            <div>
+              <label className="text-sm text-gray-600 block mb-1">{t("excuseDateTo")}</label>
+              <input
+                type="date"
+                value={dateTo}
+                min={dateFrom || undefined}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="w-full p-3 rounded-lg border border-gray-300 outline-none bg-white/80 text-black"
+              />
+            </div>
+          </div>
+
+          {dateFrom && dateTo && dateTo >= dateFrom && (
+            <div className="mb-4 px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 text-sm text-gray-700 flex items-center justify-between">
+              <span>{t("excuseDays")}</span>
+              <span className="font-bold text-[#F33615]">{days}</span>
+            </div>
+          )}
 
           <label className="text-sm text-gray-600 block mb-1">{t("excuseTypeLabel")}</label>
           <select
