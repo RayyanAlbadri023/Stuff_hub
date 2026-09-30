@@ -480,6 +480,7 @@ export const translations = {
     finAttachment: "Attachment",
     finChooseFile: "Choose File",
     finContractFile: "Contract File",
+    finInvoiceFile: "Invoice Attachment",
   },
 
   ar: {
@@ -961,6 +962,7 @@ export const translations = {
     finAttachment: "مرفق",
     finChooseFile: "اختر ملف",
     finContractFile: "ملف العقد",
+    finInvoiceFile: "مرفق الفاتورة",
   },
 } as const;
 
