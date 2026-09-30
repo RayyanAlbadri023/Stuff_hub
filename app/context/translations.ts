@@ -528,12 +528,13 @@ export const translations = {
     tabGroupAccounting: "Accounting",
     tabGroupOther: "Other",
     finHighlightTitle: "Highlight rows",
-    finHighlightFilterPlaceholder: "Or type any text to highlight (name, status, note...)",
+    finHighlightFieldNone: "Choose a field...",
+    finHighlightValuePlaceholder: "Type text to highlight",
     finHighlightYellow: "Yellow",
     finHighlightPurple: "Purple",
     finHighlightGreen: "Green",
     finClearHighlight: "Clear highlight",
-    finDuplicateHint: "Rows sharing the same name are highlighted automatically. Pick months or type a filter above to highlight anything else.",
+    finDuplicateHint: "Rows sharing the same name are highlighted automatically. Pick a field above (date, note, category, name...) to highlight anything else precisely.",
   },
 
   ar: {
@@ -1063,12 +1064,13 @@ export const translations = {
     tabGroupAccounting: "المحاسبة",
     tabGroupOther: "أخرى",
     finHighlightTitle: "تظليل الصفوف",
-    finHighlightFilterPlaceholder: "أو اكتب أي نص للتظليل (اسم، حالة، ملاحظة...)",
+    finHighlightFieldNone: "اختر حقل...",
+    finHighlightValuePlaceholder: "اكتب النص المطلوب تظليله",
     finHighlightYellow: "أصفر",
     finHighlightPurple: "بنفسجي",
     finHighlightGreen: "أخضر",
     finClearHighlight: "مسح التظليل",
-    finDuplicateHint: "الصفوف اللي تتشارك نفس الاسم تُظلَّل تلقائيًا. اختر أشهر أو اكتب فلتر فوق لتظليل أي شيء آخر.",
+    finDuplicateHint: "الصفوف اللي تتشارك نفس الاسم تُظلَّل تلقائيًا. اختر حقل فوق (تاريخ، ملاحظة، فئة، اسم...) لتظليل أي شيء آخر بدقة.",
   },
 } as const;
 
