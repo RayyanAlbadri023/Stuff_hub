@@ -41,6 +41,141 @@ const EMPTY_DATA: DataMap = {
 const COLOR_INCOME = "#10b981"; // emerald — matches the app's existing "positive/approved" green
 const COLOR_OUTCOME = "#F33615"; // the app's own brand color — used here for outflow
 
+// Row-highlight palette for finance tables: cycled automatically across
+// repeated names (e.g. the same institution appearing in several contracts),
+// and offered as manual highlight colors an accountant can pick from.
+const HIGHLIGHT_COLORS: { key: "yellow" | "purple" | "green"; hex: string; labelKey: TranslationKeys }[] = [
+  { key: "yellow", hex: "#FFF9C4", labelKey: "finHighlightYellow" },
+  { key: "purple", hex: "#E1BEE7", labelKey: "finHighlightPurple" },
+  { key: "green", hex: "#C8E6C9", labelKey: "finHighlightGreen" },
+];
+
+/**
+ * Shared row-highlighting behavior for every finance table on this page.
+ * - Automatic: any repeated "name" among the visible rows is colored, cycling
+ *   yellow → purple → green per distinct repeated value.
+ * - Manual: the accountant can pick month(s) (when rows have a date) and/or
+ *   type any free-text filter; matching rows get painted with a chosen color,
+ *   taking precedence over the automatic duplicate coloring.
+ */
+function useRowHighlight<T>(
+  rows: T[],
+  getName: (r: T) => string,
+  getDate: ((r: T) => string) | null,
+  getSearchFields: (r: T) => (string | undefined)[]
+) {
+  const [highlightMonths, setHighlightMonths] = useState<Set<string>>(new Set());
+  const [highlightText, setHighlightText] = useState("");
+  const [highlightColor, setHighlightColor] = useState<(typeof HIGHLIGHT_COLORS)[number]["key"]>("yellow");
+
+  const dupColorMap = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const r of rows) {
+      const name = getName(r);
+      if (!name) continue;
+      counts.set(name, (counts.get(name) || 0) + 1);
+    }
+    const map = new Map<string, string>();
+    let idx = 0;
+    for (const r of rows) {
+      const name = getName(r);
+      if (!name || (counts.get(name) || 0) < 2) continue;
+      if (!map.has(name)) {
+        map.set(name, HIGHLIGHT_COLORS[idx % HIGHLIGHT_COLORS.length].hex);
+        idx++;
+      }
+    }
+    return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows]);
+
+  const manualActive = highlightMonths.size > 0 || highlightText.trim() !== "";
+  const manualHex = HIGHLIGHT_COLORS.find((c) => c.key === highlightColor)?.hex || HIGHLIGHT_COLORS[0].hex;
+
+  const matches = (r: T) => {
+    if (getDate && highlightMonths.size > 0 && highlightMonths.has((getDate(r) || "").slice(5, 7))) return true;
+    const needle = highlightText.trim().toLowerCase();
+    if (needle) {
+      const haystack = getSearchFields(r).filter(Boolean).join(" ").toLowerCase();
+      if (haystack.includes(needle)) return true;
+    }
+    return false;
+  };
+
+  const rowHighlight = (r: T): string | undefined => {
+    if (manualActive && matches(r)) return manualHex;
+    return dupColorMap.get(getName(r));
+  };
+
+  const toggleMonth = (m: string) => {
+    setHighlightMonths((prev) => {
+      const next = new Set(prev);
+      if (next.has(m)) next.delete(m); else next.add(m);
+      return next;
+    });
+  };
+
+  const clear = () => {
+    setHighlightMonths(new Set());
+    setHighlightText("");
+  };
+
+  return { highlightMonths, highlightText, setHighlightText, highlightColor, setHighlightColor, rowHighlight, toggleMonth, clear, manualActive, showMonths: !!getDate };
+}
+
+function HighlightControls({
+  h, t,
+}: {
+  h: ReturnType<typeof useRowHighlight>;
+  t: (k: TranslationKeys) => string;
+}) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-3 space-y-2">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-xs font-semibold text-gray-600">🎨 {t("finHighlightTitle")}</span>
+        {h.showMonths && (
+          <div className="flex flex-wrap gap-1">
+            {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0")).map((m) => (
+              <button
+                key={m}
+                onClick={() => h.toggleMonth(m)}
+                className={`w-8 h-7 rounded-md text-xs font-semibold border transition ${
+                  h.highlightMonths.has(m) ? "border-[#F33615] text-[#F33615] bg-red-50" : "border-gray-200 text-gray-500 hover:bg-gray-50"
+                }`}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+        )}
+        <input
+          value={h.highlightText}
+          onChange={(e) => h.setHighlightText(e.target.value)}
+          placeholder={t("finHighlightFilterPlaceholder")}
+          className="flex-1 min-w-[160px] p-1.5 border rounded-lg text-black text-xs"
+        />
+        <div className="flex items-center gap-1">
+          {HIGHLIGHT_COLORS.map((c) => (
+            <button
+              key={c.key}
+              title={t(c.labelKey)}
+              onClick={() => h.setHighlightColor(c.key)}
+              style={{ backgroundColor: c.hex }}
+              className={`w-6 h-6 rounded-full border-2 transition ${h.highlightColor === c.key ? "border-gray-700" : "border-transparent"}`}
+            />
+          ))}
+        </div>
+        {h.manualActive && (
+          <button onClick={h.clear} className="px-2.5 py-1 rounded-lg text-xs font-semibold border border-gray-300 text-gray-600 hover:bg-gray-100 transition">
+            ✕ {t("finClearHighlight")}
+          </button>
+        )}
+      </div>
+      <p className="text-[10px] text-gray-400">{t("finDuplicateHint")}</p>
+    </div>
+  );
+}
+
 interface SelectOption {
   value: string;
   labelKey: TranslationKeys;
@@ -351,6 +486,16 @@ function FinanceModuleTab({
   );
   const total = useMemo(() => sumAmount(filtered), [filtered]);
 
+  const highlight = useRowHighlight(
+    filtered,
+    (r) => r.name,
+    (r) => r.date,
+    (r) => {
+      const rec = r as unknown as Record<string, string>;
+      return [r.name, rec.ref, rec.category, rec.status, rec.note];
+    }
+  );
+
   const save = async () => {
     setError("");
     if (!form.name || !form.name.trim()) return setError(t("finNoRecords"));
@@ -565,6 +710,8 @@ function FinanceModuleTab({
         )}
       </div>
 
+      <HighlightControls h={highlight} t={t} />
+
       {/* LIST */}
       <div className="overflow-x-auto bg-white rounded-xl border border-gray-200">
         <table className="w-full text-sm">
@@ -580,7 +727,7 @@ function FinanceModuleTab({
               <tr><td colSpan={config.fields.length + 2} className="text-center text-gray-500 py-6">{t("finNoRecords")}</td></tr>
             ) : (
               filtered.map((r) => (
-                <tr key={r.id} className="border-b border-gray-100">
+                <tr key={r.id} className="border-b border-gray-100" style={{ backgroundColor: highlight.rowHighlight(r) }}>
                   <td className="py-2 px-3 text-black">{r.name}</td>
                   {config.fields.map((f) => (
                     <td key={f.key} className="py-2 px-3 text-black">
@@ -749,6 +896,13 @@ function CashStatementTab({ data, t }: { data: DataMap; t: (k: TranslationKeys) 
     return { ...r, balance: Math.round(running * 100) / 100 };
   });
 
+  const highlight = useRowHighlight(
+    withBalance,
+    (r) => r.name,
+    (r) => r.date,
+    (r) => [r.name, r.kind === "in" ? "in" : "out"]
+  );
+
   const inputClass = "w-full p-2 border rounded-lg text-black text-sm";
 
   return (
@@ -770,6 +924,7 @@ function CashStatementTab({ data, t }: { data: DataMap; t: (k: TranslationKeys) 
           </select>
         </div>
       </div>
+      <HighlightControls h={highlight} t={t} />
       <div className="overflow-x-auto bg-white rounded-xl border border-gray-200">
         <table className="w-full text-sm">
           <thead>
@@ -786,7 +941,7 @@ function CashStatementTab({ data, t }: { data: DataMap; t: (k: TranslationKeys) 
               <tr><td colSpan={5} className="text-center text-gray-500 py-6">{t("finNoRecords")}</td></tr>
             ) : (
               withBalance.map((r) => (
-                <tr key={`${r.kind}-${r.id}`} className="border-b border-gray-100">
+                <tr key={`${r.kind}-${r.id}`} className="border-b border-gray-100" style={{ backgroundColor: highlight.rowHighlight(r) }}>
                   <td className="py-2 px-3 text-black">{r.date}</td>
                   <td className="py-2 px-3 text-black">{r.name}</td>
                   <td className="py-2 px-3">
@@ -952,6 +1107,13 @@ function ChartOfAccountsTab({
     list: accounts.filter((a) => a.type === type).sort((a, b) => a.code.localeCompare(b.code)),
   }));
 
+  const highlight = useRowHighlight(
+    accounts,
+    (a) => a.name,
+    null,
+    (a) => [a.code, a.name, a.type]
+  );
+
   return (
     <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1008,6 +1170,8 @@ function ChartOfAccountsTab({
         </div>
       </div>
 
+      <HighlightControls h={highlight} t={t} />
+
       {/* ACCOUNTS GROUPED BY TYPE */}
       <div className="space-y-4">
         {grouped.map(({ type, list }) => (
@@ -1031,7 +1195,7 @@ function ChartOfAccountsTab({
                     list.map((a) => {
                       const parent = accounts.find((p) => p.id === a.parentId);
                       return (
-                        <tr key={a.id} className="border-b border-gray-100">
+                        <tr key={a.id} className="border-b border-gray-100" style={{ backgroundColor: highlight.rowHighlight(a) }}>
                           <td className="py-2 px-3 text-black">{a.code}</td>
                           <td className="py-2 px-3 text-black">{a.name}</td>
                           <td className="py-2 px-3 text-gray-500">{parent ? `${parent.code} — ${parent.name}` : "—"}</td>
@@ -1195,6 +1359,13 @@ function JournalEntriesTab({
   const inputClass = "w-full p-2 border rounded-lg text-black text-sm";
   const sorted = useMemo(() => [...entries].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)), [entries]);
 
+  const highlight = useRowHighlight(
+    sorted,
+    (e) => e.description,
+    (e) => e.date,
+    (e) => [e.description, ...e.lines.map((l) => accountLabel(l.accountId))]
+  );
+
   return (
     <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1313,6 +1484,8 @@ function JournalEntriesTab({
         </div>
       </div>
 
+      <HighlightControls h={highlight} t={t} />
+
       {/* LIST */}
       <div className="overflow-x-auto bg-white rounded-xl border border-gray-200">
         <table className="w-full text-sm">
@@ -1331,7 +1504,7 @@ function JournalEntriesTab({
               <tr><td colSpan={6} className="text-center text-gray-500 py-6">{t("jeNoEntries")}</td></tr>
             ) : (
               sorted.map((e) => (
-                <tr key={e.id} className="border-b border-gray-100 align-top">
+                <tr key={e.id} className="border-b border-gray-100 align-top" style={{ backgroundColor: highlight.rowHighlight(e) }}>
                   <td className="py-2 px-3 text-black">{e.date}</td>
                   <td className="py-2 px-3 text-black">{e.description}</td>
                   <td className="py-2 px-3 text-gray-600 text-xs">
