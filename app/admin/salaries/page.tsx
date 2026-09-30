@@ -7,10 +7,9 @@ import { useRequest } from "@/app/hooks/useRequest";
 import { useLang } from "@/app/context/LangContext";
 import LangToggle from "@/app/components/LangToggle";
 import {
-  computeSocialInsurance,
-  DEFAULT_SOCIAL_INSURANCE_RATES,
-  SOCIAL_INSURANCE_RATE_KEYS,
-  type SocialInsuranceRates,
+  computeHealthInsurance,
+  DEFAULT_HEALTH_INSURANCE_SETTINGS,
+  type HealthInsuranceSettings,
   type Nationality,
 } from "@/app/lib/socialInsurance";
 import { computeGratuity, DEFAULT_GRATUITY_SETTINGS, type GratuitySettings } from "@/app/lib/gratuity";
@@ -32,14 +31,6 @@ interface User {
 
 type ApiUsersResponse = User[];
 
-const RATE_LABEL_KEYS: Record<(typeof SOCIAL_INSURANCE_RATE_KEYS)[number], "rate_pensionEmployee" | "rate_pensionEmployer" | "rate_jobSecurityEmployee" | "rate_jobSecurityEmployer" | "rate_occInjuryEmployer"> = {
-  pensionEmployeeRate: "rate_pensionEmployee",
-  pensionEmployerRate: "rate_pensionEmployer",
-  jobSecurityEmployeeRate: "rate_jobSecurityEmployee",
-  jobSecurityEmployerRate: "rate_jobSecurityEmployer",
-  occupationalInjuryEmployerRate: "rate_occInjuryEmployer",
-};
-
 export default function AdminSalariesPage() {
   const router = useRouter();
   const { user, loading: authLoading, logout } = useAuth({ requiredRole: ADMIN_OR_MANAGER });
@@ -52,7 +43,7 @@ export default function AdminSalariesPage() {
   const [reloadKey, setReloadKey] = useState(0);
   const loadData = useCallback(() => setReloadKey((k) => k + 1), []);
 
-  const [rates, setRates] = useState<SocialInsuranceRates>(DEFAULT_SOCIAL_INSURANCE_RATES);
+  const [healthInsurance, setHealthInsurance] = useState<HealthInsuranceSettings>(DEFAULT_HEALTH_INSURANCE_SETTINGS);
   const [ratesSavedMsg, setRatesSavedMsg] = useState("");
   const [gratuitySettings, setGratuitySettings] = useState<GratuitySettings>(DEFAULT_GRATUITY_SETTINGS);
   const [gratuitySavedMsg, setGratuitySavedMsg] = useState("");
@@ -73,7 +64,7 @@ export default function AdminSalariesPage() {
         ]);
         if (cancelled) return;
         setUsers(Array.isArray(usersData) ? (usersData as ApiUsersResponse) : []);
-        if (ratesData && typeof ratesData === "object") setRates({ ...DEFAULT_SOCIAL_INSURANCE_RATES, ...(ratesData as Partial<SocialInsuranceRates>) });
+        if (ratesData && typeof ratesData === "object") setHealthInsurance({ ...DEFAULT_HEALTH_INSURANCE_SETTINGS, ...(ratesData as Partial<HealthInsuranceSettings>) });
         if (gratuityData && typeof gratuityData === "object") setGratuitySettings({ ...DEFAULT_GRATUITY_SETTINGS, ...(gratuityData as Partial<GratuitySettings>) });
       } catch (err) {
         if (!cancelled) setApiError(err instanceof Error ? err.message : "Failed to load data");
@@ -85,13 +76,13 @@ export default function AdminSalariesPage() {
     return () => { cancelled = true; };
   }, [authLoading, reloadKey]);
 
-  const saveRates = async () => {
+  const saveHealthInsurance = async () => {
     const updated = await execute("/api/settings/social-insurance", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(rates),
+      body: JSON.stringify(healthInsurance),
     });
-    if (updated && typeof updated === "object") setRates({ ...DEFAULT_SOCIAL_INSURANCE_RATES, ...(updated as Partial<SocialInsuranceRates>) });
+    if (updated && typeof updated === "object") setHealthInsurance({ ...DEFAULT_HEALTH_INSURANCE_SETTINGS, ...(updated as Partial<HealthInsuranceSettings>) });
     setRatesSavedMsg(t("ratesSaved"));
     setTimeout(() => setRatesSavedMsg(""), 2500);
   };
@@ -107,12 +98,12 @@ export default function AdminSalariesPage() {
     setTimeout(() => setGratuitySavedMsg(""), 2500);
   };
 
+  const healthInsuranceBreakdown = computeHealthInsurance(healthInsurance);
   const insuranceRows = users.map((u) => ({
     user: u,
-    breakdown: computeSocialInsurance(u.nationality ?? "omani", u.baseSalary ?? 0, u.allowance ?? 0, rates),
+    breakdown: healthInsuranceBreakdown,
   }));
-  const totalEmployerCost = insuranceRows.reduce((sum, r) => sum + r.breakdown.employerShare, 0);
-  const totalEmployeeDeductions = insuranceRows.reduce((sum, r) => sum + r.breakdown.employeeShare, 0);
+  const totalEmployerCost = insuranceRows.length * healthInsuranceBreakdown.employerCost;
 
   const gratuityRows = users.map((u) => ({
     user: u,
@@ -224,29 +215,27 @@ export default function AdminSalariesPage() {
               </div>
             </div>
 
-            {/* SOCIAL INSURANCE */}
+            {/* HEALTH INSURANCE */}
             <div className="bg-gray-50 p-5 rounded-xl border border-gray-200">
-              <h2 className="font-bold mb-1 text-[#F33615] text-lg">🪪 {t("socialInsuranceTitle")}</h2>
-              <p className="text-xs text-gray-500 mb-4">{t("insuranceNote")}</p>
+              <h2 className="font-bold mb-1 text-[#F33615] text-lg">🏥 {t("healthInsuranceTitle")}</h2>
+              <p className="text-xs text-gray-500 mb-4">{t("healthInsuranceNote")}</p>
 
               {/* RATE SETTINGS */}
               <div className="bg-white rounded-xl border border-gray-200 p-4 mb-5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                  {SOCIAL_INSURANCE_RATE_KEYS.map((key) => (
-                    <div key={key}>
-                      <label className="text-xs text-gray-600 block mb-1">{t(RATE_LABEL_KEYS[key])}</label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        value={rates[key]}
-                        onChange={(e) => setRates({ ...rates, [key]: Number(e.target.value) })}
-                        className="w-full p-2 border rounded-lg text-black text-sm"
-                      />
-                    </div>
-                  ))}
+                  <div>
+                    <label className="text-xs text-gray-600 block mb-1">{t("healthInsurancePremium")}</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={healthInsurance.monthlyPremium}
+                      onChange={(e) => setHealthInsurance({ ...healthInsurance, monthlyPremium: Number(e.target.value) })}
+                      className="w-full p-2 border rounded-lg text-black text-sm"
+                    />
+                  </div>
                 </div>
                 <div className="flex items-center gap-3 mt-3">
-                  <button onClick={saveRates} className="px-4 py-2 rounded-lg text-white text-sm font-semibold bg-[#030405] hover:bg-[#F33615] transition">{t("saveRates")}</button>
+                  <button onClick={saveHealthInsurance} className="px-4 py-2 rounded-lg text-white text-sm font-semibold bg-[#030405] hover:bg-[#F33615] transition">{t("saveRates")}</button>
                   {ratesSavedMsg && <span className="text-green-600 text-sm font-medium">{ratesSavedMsg}</span>}
                 </div>
               </div>
@@ -254,12 +243,12 @@ export default function AdminSalariesPage() {
               {/* SUMMARY */}
               <div className="grid grid-cols-2 gap-3 mb-5">
                 <div className="bg-white rounded-xl p-3 text-center border border-gray-200">
-                  <p className="text-xs text-gray-500 mb-1">{t("totalEmployerCost")}</p>
-                  <p className="text-xl font-bold text-[#F33615]">{totalEmployerCost.toFixed(2)}</p>
+                  <p className="text-xs text-gray-500 mb-1">{t("users")}</p>
+                  <p className="text-xl font-bold text-[#F33615]">{insuranceRows.length}</p>
                 </div>
                 <div className="bg-white rounded-xl p-3 text-center border border-gray-200">
-                  <p className="text-xs text-gray-500 mb-1">{t("totalEmployeeDeductions")}</p>
-                  <p className="text-xl font-bold text-[#F33615]">{totalEmployeeDeductions.toFixed(2)}</p>
+                  <p className="text-xs text-gray-500 mb-1">{t("totalEmployerCost")}</p>
+                  <p className="text-xl font-bold text-[#F33615]">{totalEmployerCost.toFixed(2)}</p>
                 </div>
               </div>
 
@@ -269,23 +258,17 @@ export default function AdminSalariesPage() {
                   <thead>
                     <tr className="text-gray-600 border-b border-gray-200">
                       <th className="text-start py-2 px-3">{t("users")}</th>
-                      <th className="text-start py-2 px-3">{t("contributableSalary")}</th>
-                      <th className="text-start py-2 px-3">{t("employeeShare")}</th>
-                      <th className="text-start py-2 px-3">{t("employerShare")}</th>
-                      <th className="text-start py-2 px-3 font-bold">{t("totalContribution")}</th>
+                      <th className="text-start py-2 px-3 font-bold">{t("healthInsurancePremium")}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {insuranceRows.length === 0 ? (
-                      <tr><td colSpan={5} className="text-center text-gray-500 py-6">{t("noUsers")}</td></tr>
+                      <tr><td colSpan={2} className="text-center text-gray-500 py-6">{t("noUsers")}</td></tr>
                     ) : (
                       insuranceRows.map(({ user: u, breakdown }) => (
                         <tr key={u.id} className="border-b border-gray-100">
                           <td className="py-2 px-3 text-black">{u.firstName} {u.lastName}</td>
-                          <td className="py-2 px-3 text-black">{breakdown.contributableSalary.toFixed(2)}</td>
-                          <td className="py-2 px-3 text-black">{breakdown.employeeShare.toFixed(2)}</td>
-                          <td className="py-2 px-3 text-black">{breakdown.employerShare.toFixed(2)}</td>
-                          <td className="py-2 px-3 font-bold text-[#F33615]">{breakdown.total.toFixed(2)}</td>
+                          <td className="py-2 px-3 font-bold text-[#F33615]">{breakdown.employerCost.toFixed(2)}</td>
                         </tr>
                       ))
                     )}

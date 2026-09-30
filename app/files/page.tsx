@@ -6,7 +6,7 @@ import { useAuth } from "@/app/hooks/useAuth";
 import { useRequest } from "@/app/hooks/useRequest";
 import { useLang } from "@/app/context/LangContext";
 import LangToggle from "@/app/components/LangToggle";
-import { getAccessibleSections, type FileSectionKey } from "@/app/lib/fileSections";
+import { FILE_SECTIONS, getAccessibleSections, canAccessSection, type FileSectionKey } from "@/app/lib/fileSections";
 
 interface SharedFile {
   id: string;
@@ -42,6 +42,15 @@ export default function SharedFilesPage() {
   const accessibleSections = useMemo(() => getAccessibleSections(user?.email), [user?.email]);
 
   const [activeSection, setActiveSection] = useState<FileSectionKey | null>(null);
+
+  // Whether the signed-in user may actually view/upload/manage the
+  // currently selected tab. All section names are shown to everyone, but
+  // opening one you're not a member of is blocked here (and again by the
+  // API, which double-checks with canAccessSection server-side).
+  const hasSectionAccess = useMemo(
+    () => (activeSection ? canAccessSection(user?.email, activeSection) : false),
+    [user?.email, activeSection]
+  );
   const [files, setFiles] = useState<SharedFile[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [title, setTitle] = useState("");
@@ -55,14 +64,23 @@ export default function SharedFilesPage() {
   // Default to the first section this user can see once we know who they are.
   useEffect(() => {
     if (authLoading) return;
-    if (!activeSection && accessibleSections.length > 0) {
-      setActiveSection(accessibleSections[0].key);
+    if (!activeSection && FILE_SECTIONS.length > 0) {
+      // Prefer a section the user can actually see files in; fall back to
+      // the first section overall (its tab is still visible to everyone).
+      setActiveSection(accessibleSections[0]?.key ?? FILE_SECTIONS[0].key);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, accessibleSections]);
 
   useEffect(() => {
     if (authLoading || !activeSection || !user?.email) return;
+    if (!hasSectionAccess) {
+      // No permission for this section — don't call the API, just show
+      // the "Unauthorized" state below.
+      setFiles([]);
+      setDataLoading(false);
+      return;
+    }
     let cancelled = false;
     async function fetchFiles() {
       setDataLoading(true);
@@ -74,7 +92,7 @@ export default function SharedFilesPage() {
     fetchFiles();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authLoading, activeSection, user?.email, reloadKey]);
+  }, [authLoading, activeSection, user?.email, reloadKey, hasSectionAccess]);
 
   if (authLoading) return null;
 
@@ -151,27 +169,29 @@ export default function SharedFilesPage() {
           <LangToggle dark />
         </div>
 
-        {accessibleSections.length === 0 ? (
-          <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6 text-center text-gray-500">
-            {t("noSectionAccess")}
+        <>
+          {/* SECTION TABS — every section name is visible to every employee; */}
+          {/* clicking one you don't belong to shows "Unauthorized" below. */}
+          <div className="flex flex-wrap gap-2">
+            {FILE_SECTIONS.map((s) => (
+              <button
+                key={s.key}
+                onClick={() => setActiveSection(s.key)}
+                className={`px-3 py-1.5 rounded-full text-sm font-semibold transition ${
+                  activeSection === s.key ? "bg-[#F33615] text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                {s.icon} {t(s.labelKey)}
+              </button>
+            ))}
           </div>
-        ) : (
-          <>
-            {/* SECTION TABS */}
-            <div className="flex flex-wrap gap-2">
-              {accessibleSections.map((s) => (
-                <button
-                  key={s.key}
-                  onClick={() => setActiveSection(s.key)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-semibold transition ${
-                    activeSection === s.key ? "bg-[#F33615] text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
-                >
-                  {s.icon} {t(s.labelKey)}
-                </button>
-              ))}
-            </div>
 
+          {!hasSectionAccess ? (
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center text-red-600 font-semibold">
+              🔒 {t("sectionUnauthorized")}
+            </div>
+          ) : (
+          <>
             {/* UPLOAD FORM */}
             <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6">
               {(formError) && <p className="text-red-500 text-sm mb-3">{formError}</p>}
@@ -244,7 +264,8 @@ export default function SharedFilesPage() {
               )}
             </div>
           </>
-        )}
+          )}
+        </>
       </div>
     </div>
   );

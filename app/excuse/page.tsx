@@ -15,6 +15,7 @@ export default function ExcusePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [date, setDate] = useState("");
+  const [excuseType, setExcuseType] = useState("");
   const [message, setMessage] = useState("");
   const [attachment, setAttachment] = useState<string | null>(null);
   const [attachmentName, setAttachmentName] = useState("");
@@ -38,6 +39,7 @@ export default function ExcusePage() {
   async function sendExcuse() {
     setFormError(""); setSuccessMsg("");
     if (!date) return setFormError(t("excuseDateRequired"));
+    if (!excuseType) return setFormError(t("excuseTypeRequired"));
     if (!message.trim() || !attachment) return setFormError(t("excuseEmpty"));
 
     const result = await execute("/api/requests", {
@@ -48,6 +50,7 @@ export default function ExcusePage() {
         name: `${user?.firstName ?? ""} ${user?.lastName ?? ""}`.trim() || "Employee",
         email: user?.email || "",
         type: "excuse",
+        excuseType,
         message,
         start: date,
         attachment,
@@ -57,7 +60,7 @@ export default function ExcusePage() {
     if (!result) return;
 
     setSuccessMsg(t("excuseSuccess"));
-    setDate(""); setMessage(""); setAttachment(null); setAttachmentName("");
+    setDate(""); setExcuseType(""); setMessage(""); setAttachment(null); setAttachmentName("");
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
@@ -79,6 +82,18 @@ export default function ExcusePage() {
             onChange={(e) => setDate(e.target.value)}
             className="w-full p-3 rounded-lg border border-gray-300 outline-none bg-white/80 text-black mb-4"
           />
+
+          <label className="text-sm text-gray-600 block mb-1">{t("excuseTypeLabel")}</label>
+          <select
+            value={excuseType}
+            onChange={(e) => setExcuseType(e.target.value)}
+            className="w-full p-3 rounded-lg border border-gray-300 outline-none bg-white/80 text-black mb-4"
+          >
+            <option value="">{t("excuseTypeLabel")}</option>
+            <option value="emergency">{t("excuseTypeEmergency")}</option>
+            <option value="death">{t("excuseTypeDeath")}</option>
+            <option value="sick">{t("excuseTypeSick")}</option>
+          </select>
 
           <label className="text-sm text-gray-600 block mb-1">{t("excuseReasonPlaceholder")}</label>
           <textarea

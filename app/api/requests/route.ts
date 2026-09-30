@@ -12,7 +12,7 @@ export async function GET() {
     const requests: any[] = [];
     reqSnap.forEach((child) => {
       const d = child.val();
-      requests.push({ id: child.key, userId: d.userId || null, name: d.name, email: d.email, type: d.type, message: d.message || null, start: d.start || null, end: null, days: null, status: d.status, createdAt: d.createdAt, attachment: d.attachment || null, attachmentName: d.attachmentName || null });
+      requests.push({ id: child.key, userId: d.userId || null, name: d.name, email: d.email, type: d.type, excuseType: d.excuseType || null, message: d.message || null, start: d.start || null, end: null, days: null, status: d.status, createdAt: d.createdAt, attachment: d.attachment || null, attachmentName: d.attachmentName || null });
     });
 
     const vacations: any[] = [];
@@ -71,6 +71,10 @@ export async function POST(req: NextRequest) {
         createdAt: new Date().toISOString(),
       });
     } else if (type === "excuse") {
+      const validExcuseTypes = ["emergency", "death", "sick"];
+      if (!validExcuseTypes.includes(body.excuseType)) {
+        return NextResponse.json({ message: "A valid excuse type is required" }, { status: 400 });
+      }
       if (!body.message || !String(body.message).trim() || !body.attachment) {
         return NextResponse.json({ message: "Reason and attachment are required" }, { status: 400 });
       }
@@ -79,6 +83,7 @@ export async function POST(req: NextRequest) {
         name: body.name || "Employee",
         email: body.email || "",
         type,
+        excuseType: body.excuseType,
         message: body.message || "",
         start: body.start || "",
         attachment: body.attachment,

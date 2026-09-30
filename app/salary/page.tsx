@@ -7,7 +7,7 @@ import { useRequest } from "@/app/hooks/useRequest";
 import { useLang } from "@/app/context/LangContext";
 import LangToggle from "@/app/components/LangToggle";
 import { computeVacationBalance, type VacationRecord } from "@/app/lib/vacationBalance";
-import { computeSocialInsurance, DEFAULT_SOCIAL_INSURANCE_RATES, type Nationality, type SocialInsuranceRates } from "@/app/lib/socialInsurance";
+import { computeHealthInsurance, DEFAULT_HEALTH_INSURANCE_SETTINGS, type Nationality, type HealthInsuranceSettings } from "@/app/lib/socialInsurance";
 import { computeGratuity, DEFAULT_GRATUITY_SETTINGS, type GratuitySettings } from "@/app/lib/gratuity";
 
 interface SalaryData {
@@ -44,7 +44,7 @@ export default function SalaryPage() {
 
   const [salary, setSalary] = useState<SalaryData | null>(null);
   const [history, setHistory] = useState<VacationHistoryItem[]>([]);
-  const [rates, setRates] = useState<SocialInsuranceRates>(DEFAULT_SOCIAL_INSURANCE_RATES);
+  const [healthInsurance, setHealthInsurance] = useState<HealthInsuranceSettings>(DEFAULT_HEALTH_INSURANCE_SETTINGS);
   const [gratuitySettings, setGratuitySettings] = useState<GratuitySettings>(DEFAULT_GRATUITY_SETTINGS);
   const [dataLoading, setDataLoading] = useState(true);
 
@@ -76,7 +76,7 @@ export default function SalaryPage() {
         });
       }
       if (ratesRes && typeof ratesRes === "object") {
-        setRates({ ...DEFAULT_SOCIAL_INSURANCE_RATES, ...(ratesRes as Partial<SocialInsuranceRates>) });
+        setHealthInsurance({ ...DEFAULT_HEALTH_INSURANCE_SETTINGS, ...(ratesRes as Partial<HealthInsuranceSettings>) });
       }
       if (gratuityRes && typeof gratuityRes === "object") {
         setGratuitySettings({ ...DEFAULT_GRATUITY_SETTINGS, ...(gratuityRes as Partial<GratuitySettings>) });
@@ -97,10 +97,7 @@ export default function SalaryPage() {
     ? salary.baseSalary + salary.allowance + salary.phoneAllowance + salary.transportationAllowance + salary.otherAllowance
     : 0;
 
-  const insurance = salary
-    ? computeSocialInsurance(salary.nationality, salary.baseSalary, salary.allowance, rates)
-    : null;
-  const netSalary = insurance ? total - insurance.employeeShare : total;
+  const healthInsuranceBreakdown = salary ? computeHealthInsurance(healthInsurance) : null;
 
   const gratuity = salary
     ? computeGratuity(salary.baseSalary, salary.joinDate, salary.nationality, gratuitySettings)
@@ -158,31 +155,17 @@ export default function SalaryPage() {
               </div>
             </div>
 
-            {/* SOCIAL INSURANCE */}
-            {insurance && (
+            {/* HEALTH INSURANCE */}
+            {healthInsuranceBreakdown && (
               <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6">
-                <h2 className="text-lg font-semibold text-[#F33615] mb-4">🪪 {t("socialInsuranceTitle")}</h2>
+                <h2 className="text-lg font-semibold text-[#F33615] mb-4">🏥 {t("healthInsuranceTitle")}</h2>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                   <div className="bg-gray-50 rounded-xl p-3 text-center border border-gray-200">
-                    <p className="text-xs text-gray-500 mb-1">{t("nationality")}</p>
-                    <p className="text-sm font-bold text-[#F33615]">{salary?.nationality === "expat" ? t("expat") : t("omani")}</p>
-                  </div>
-                  <div className="bg-gray-50 rounded-xl p-3 text-center border border-gray-200">
-                    <p className="text-xs text-gray-500 mb-1">{t("employeeShare")}</p>
-                    <p className="text-xl font-bold text-[#F33615]">{insurance.employeeShare.toFixed(2)}</p>
-                  </div>
-                  <div className="bg-gray-50 rounded-xl p-3 text-center border border-gray-200">
-                    <p className="text-xs text-gray-500 mb-1">{t("employerShare")}</p>
-                    <p className="text-xl font-bold text-[#F33615]">{insurance.employerShare.toFixed(2)}</p>
-                  </div>
-                  <div className="bg-gray-50 rounded-xl p-3 text-center border border-gray-200">
-                    <p className="text-xs text-gray-500 mb-1">{t("netSalary")}</p>
-                    <p className="text-xl font-bold text-[#F33615]">{netSalary.toFixed(2)}</p>
+                    <p className="text-xs text-gray-500 mb-1">{t("healthInsurancePremium")}</p>
+                    <p className="text-xl font-bold text-[#F33615]">{healthInsuranceBreakdown.monthlyPremium.toFixed(2)}</p>
                   </div>
                 </div>
-                {!insurance.appliesPension && (
-                  <p className="text-xs text-gray-500">ℹ️ {t("pensionNotApplicable")}</p>
-                )}
+                <p className="text-xs text-gray-500">ℹ️ {t("healthInsuranceEmployerPaidNote")}</p>
               </div>
             )}
 

@@ -11,6 +11,8 @@
 // "open to every authenticated user" — it's the one shared space everyone
 // can see regardless of department.
 
+import type { TranslationKeys } from "@/app/context/translations";
+
 export type FileSectionKey =
   | "marketing"
   | "programming"
@@ -21,7 +23,7 @@ export type FileSectionKey =
 
 export interface FileSectionDef {
   key: FileSectionKey;
-  labelKey: string; // translation key for the section's display name
+  labelKey: TranslationKeys; // translation key for the section's display name
   icon: string;
   /** Lowercased member emails. An empty array means "open to everyone". */
   members: string[];

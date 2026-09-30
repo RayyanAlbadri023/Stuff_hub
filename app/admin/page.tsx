@@ -233,12 +233,15 @@ export default function AdminPage() {
         </div>
 
         {/* QUICK LINKS */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <button onClick={() => router.push("/admin/vacations")} className="flex items-center justify-center gap-2 py-4 rounded-xl bg-gray-50 border border-gray-200 hover:border-[#F33615] hover:bg-white transition font-semibold text-black">
             {t("navVacations")}
           </button>
           <button onClick={() => router.push("/admin/salaries")} className="flex items-center justify-center gap-2 py-4 rounded-xl bg-gray-50 border border-gray-200 hover:border-[#F33615] hover:bg-white transition font-semibold text-black">
             {t("navSalaries")}
+          </button>
+          <button onClick={() => router.push("/admin/finance")} className="flex items-center justify-center gap-2 py-4 rounded-xl bg-gray-50 border border-gray-200 hover:border-[#F33615] hover:bg-white transition font-semibold text-black">
+            💼 {t("financeTitle")}
           </button>
           <button onClick={() => router.push("/admin/tasks")} className="flex items-center justify-center gap-2 py-4 rounded-xl bg-gray-50 border border-gray-200 hover:border-[#F33615] hover:bg-white transition font-semibold text-black">
             {t("navTasks")}

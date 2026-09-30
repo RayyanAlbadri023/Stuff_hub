@@ -13,6 +13,7 @@ interface RequestItem {
   name: string;
   email: string;
   message?: string;
+  excuseType?: "emergency" | "death" | "sick";
   start?: string;
   end?: string;
   days?: number;
@@ -93,6 +94,12 @@ export default function AdminVacationsPage() {
     if (!confirm(t("deleteRequest"))) return;
     await execute(`/api/requests/${id}`, { method: "DELETE" });
     setRequests((prev) => prev.filter((r) => r.id !== id));
+  };
+
+  const EXCUSE_TYPE_LABELS: Record<NonNullable<RequestItem["excuseType"]>, string> = {
+    emergency: t("excuseTypeEmergency"),
+    death: t("excuseTypeDeath"),
+    sick: t("excuseTypeSick"),
   };
 
   const TYPE_LABELS: Record<RequestType, string> = {
@@ -226,6 +233,9 @@ export default function AdminVacationsPage() {
                             <span className="font-semibold text-black text-sm">{r.name}</span>
                             <span className="text-xs text-gray-400">·</span>
                             <span className="text-xs font-medium text-gray-600 flex items-center gap-1">{TYPE_ICONS[r.type]} {TYPE_LABELS[r.type]}</span>
+                            {r.type === "excuse" && r.excuseType && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">{EXCUSE_TYPE_LABELS[r.excuseType]}</span>
+                            )}
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${STATUS_COLORS[r.status]}`}>{r.status}</span>
                           </div>
                           {r.email && <p className="text-xs text-gray-400">{r.email}</p>}

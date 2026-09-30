@@ -297,9 +297,36 @@ function EmployeeProfile() {
               </div>
             </div>
 
-            {/* SOCIAL INSURANCE */}
+            {/* SALARY BREAKDOWN */}
             <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6">
-              <h2 className="text-lg font-semibold text-[#F33615] mb-4">🪪 {t("socialInsuranceTitle")}</h2>
+              <h2 className="text-lg font-semibold text-[#F33615] mb-4">💰 {t("salaryBreakdown")}</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+                <div>
+                  <label className={labelClass}>{t("baseSalary")}</label>
+                  <input type="number" value={employee.baseSalary ?? 0} onChange={(e) => update({ baseSalary: Number(e.target.value) })} className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>{t("allowance")}</label>
+                  <input type="number" value={employee.allowance ?? 0} onChange={(e) => update({ allowance: Number(e.target.value) })} className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>{t("phoneAllowance")}</label>
+                  <input type="number" value={employee.phoneAllowance ?? 0} onChange={(e) => update({ phoneAllowance: Number(e.target.value) })} className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>{t("transportationAllowance")}</label>
+                  <input type="number" value={employee.transportationAllowance ?? 0} onChange={(e) => update({ transportationAllowance: Number(e.target.value) })} className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>{t("otherAllowance")}</label>
+                  <input type="number" value={employee.otherAllowance ?? 0} onChange={(e) => update({ otherAllowance: Number(e.target.value) })} className={inputClass} />
+                </div>
+              </div>
+            </div>
+
+            {/* HEALTH INSURANCE */}
+            <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6">
+              <h2 className="text-lg font-semibold text-[#F33615] mb-4">🏥 {t("healthInsuranceTitle")}</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
                 <div>
                   <label className={labelClass}>{t("insuranceNumber")}</label>
@@ -384,33 +411,6 @@ function EmployeeProfile() {
                 </div>
               </div>
             )}
-
-            {/* SALARY BREAKDOWN */}
-            <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6">
-              <h2 className="text-lg font-semibold text-[#F33615] mb-4">💰 {t("salaryBreakdown")}</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
-                <div>
-                  <label className={labelClass}>{t("baseSalary")}</label>
-                  <input type="number" value={employee.baseSalary ?? 0} onChange={(e) => update({ baseSalary: Number(e.target.value) })} className={inputClass} />
-                </div>
-                <div>
-                  <label className={labelClass}>{t("allowance")}</label>
-                  <input type="number" value={employee.allowance ?? 0} onChange={(e) => update({ allowance: Number(e.target.value) })} className={inputClass} />
-                </div>
-                <div>
-                  <label className={labelClass}>{t("phoneAllowance")}</label>
-                  <input type="number" value={employee.phoneAllowance ?? 0} onChange={(e) => update({ phoneAllowance: Number(e.target.value) })} className={inputClass} />
-                </div>
-                <div>
-                  <label className={labelClass}>{t("transportationAllowance")}</label>
-                  <input type="number" value={employee.transportationAllowance ?? 0} onChange={(e) => update({ transportationAllowance: Number(e.target.value) })} className={inputClass} />
-                </div>
-                <div>
-                  <label className={labelClass}>{t("otherAllowance")}</label>
-                  <input type="number" value={employee.otherAllowance ?? 0} onChange={(e) => update({ otherAllowance: Number(e.target.value) })} className={inputClass} />
-                </div>
-              </div>
-            </div>
 
             {/* CONTRACT */}
             <div className="bg-white border border-gray-200 shadow-sm rounded-2xl p-6">
