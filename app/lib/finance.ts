@@ -15,6 +15,7 @@ export const FINANCE_TYPES = [
   "expenses",
   "refunds",
   "cards",
+  "contracts",
 ] as const;
 
 export type FinanceType = (typeof FINANCE_TYPES)[number];
@@ -25,14 +26,21 @@ export function isValidFinanceType(t: string): t is FinanceType {
 
 export interface FinanceRecord {
   id: string;
-  name: string; // primary label: customer/asset/vendor/source/title/card holder/reason
+  name: string; // primary label: customer/asset/vendor/source/title/card holder/reason/institution
   amount: number; // monetary amount: invoice/value/balance/income/expense/refund
-  date: string; // YYYY-MM-DD
+  date: string; // YYYY-MM-DD — also used as "contract start date" for contracts
   category?: string; // free-form category / invoice status / card type, per module
   status?: string; // secondary tag — invoice status, card type, etc.
   ref?: string; // reference code — invoice #, item, phone, card number
   note?: string; // description / contact info / reason
   createdAt?: string;
+  // Contract-specific fields (module: "contracts")
+  endDate?: string; // contract end date, YYYY-MM-DD
+  paymentDate?: string; // YYYY-MM-DD
+  fileData?: string; // base64 data URL of the attached contract/other file
+  fileName?: string; // original file name of the attachment
+  bankGuaranteeData?: string; // base64 data URL of the bank guarantee attachment
+  bankGuaranteeName?: string; // original file name of the bank guarantee attachment
 }
 
 export interface FinanceFilter {

@@ -6,6 +6,7 @@ import { useAuth } from "@/app/hooks/useAuth";
 import { useRequest } from "@/app/hooks/useRequest";
 import { useLang } from "@/app/context/LangContext";
 import LangToggle from "@/app/components/LangToggle";
+import type { TranslationKeys } from "@/app/context/translations";
 import {
   type FinanceType,
   type FinanceRecord,
@@ -20,7 +21,7 @@ import {
 type DataMap = Record<FinanceType, FinanceRecord[]>;
 
 const EMPTY_DATA: DataMap = {
-  invoices: [], assets: [], vendors: [], sales: [], income: [], expenses: [], refunds: [], cards: [],
+  invoices: [], assets: [], vendors: [], sales: [], income: [], expenses: [], refunds: [], cards: [], contracts: [],
 };
 
 // Brand-consistent, fixed two-series palette (income vs outcome) reused
@@ -30,21 +31,21 @@ const COLOR_OUTCOME = "#F33615"; // the app's own brand color — used here for 
 
 interface SelectOption {
   value: string;
-  labelKey: string;
+  labelKey: TranslationKeys;
 }
 
 interface FieldConfig {
-  key: "amount" | "date" | "category" | "status" | "ref" | "note";
-  labelKey: string;
-  type: "text" | "number" | "date" | "select";
+  key: "amount" | "date" | "category" | "status" | "ref" | "note" | "endDate" | "bankGuarantee" | "paymentDate" | "file";
+  labelKey: TranslationKeys;
+  type: "text" | "number" | "date" | "select" | "file";
   options?: SelectOption[];
 }
 
 interface ModuleConfig {
   type: FinanceType;
   icon: string;
-  titleKey: string;
-  nameLabelKey: string;
+  titleKey: TranslationKeys;
+  nameLabelKey: TranslationKeys;
   fields: FieldConfig[];
   showTotal?: boolean;
 }
@@ -135,9 +136,20 @@ const MODULES: ModuleConfig[] = [
       { key: "date", labelKey: "date", type: "date" },
     ],
   },
+  {
+    type: "contracts", icon: "📜", titleKey: "financeContracts", nameLabelKey: "finNameContract",
+    fields: [
+      { key: "date", labelKey: "finContractStart", type: "date" },
+      { key: "endDate", labelKey: "finContractEnd", type: "date" },
+      { key: "bankGuarantee", labelKey: "finBankGuarantee", type: "file" },
+      { key: "paymentDate", labelKey: "finPaymentDate", type: "date" },
+      { key: "note", labelKey: "finNote", type: "text" },
+      { key: "file", labelKey: "finAttachment", type: "file" },
+    ],
+  },
 ];
 
-function optionLabel(t: (k: string) => string, fields: FieldConfig[], key: FieldConfig["key"], value?: string) {
+function optionLabel(t: (k: TranslationKeys) => string, fields: FieldConfig[], key: FieldConfig["key"], value?: string) {
   const field = fields.find((f) => f.key === key);
   const opt = field?.options?.find((o) => o.value === value);
   return opt ? t(opt.labelKey) : value || "—";
@@ -182,7 +194,7 @@ export default function FinancePage() {
 
   if (authLoading) return null;
 
-  const TABS: { key: typeof activeTab; icon: string; labelKey: string }[] = [
+  const TABS: { key: typeof activeTab; icon: string; labelKey: TranslationKeys }[] = [
     { key: "overview", icon: "📊", labelKey: "financeOverview" },
     ...MODULES.map((m) => ({ key: m.type, icon: m.icon, labelKey: m.titleKey })),
     { key: "cashStatement", icon: "📑", labelKey: "financeCashStatement" },
@@ -251,7 +263,7 @@ function FinanceModuleTab({
 }: {
   config: ModuleConfig;
   records: FinanceRecord[];
-  t: (k: string) => string;
+  t: (k: TranslationKeys) => string;
   execute: (input: RequestInfo, init?: RequestInit) => Promise<unknown>;
   onChanged: () => void;
 }) {
@@ -279,6 +291,17 @@ function FinanceModuleTab({
     const body: Record<string, unknown> = { name: form.name.trim(), date: form.date };
     for (const f of config.fields) {
       if (f.key === "date") continue;
+      if (f.type === "file") {
+        if (form[f.key]) {
+          // "file" (general attachment) maps to fileData/fileName; any other
+          // file-type field (e.g. "bankGuarantee") maps to <key>Data/<key>Name.
+          const dataKey = f.key === "file" ? "fileData" : `${f.key}Data`;
+          const nameKey = f.key === "file" ? "fileName" : `${f.key}Name`;
+          body[dataKey] = form[f.key];
+          body[nameKey] = form[`${f.key}Name`] || "";
+        }
+        continue;
+      }
       if (form[f.key] !== undefined) body[f.key] = f.type === "number" ? Number(form[f.key]) || 0 : form[f.key];
     }
     const res = await execute(`/api/finance/${config.type}`, {
@@ -322,6 +345,23 @@ function FinanceModuleTab({
                 <select value={form[f.key] ?? f.options?.[0]?.value ?? ""} onChange={(e) => setForm({ ...form, [f.key]: e.target.value })} className={inputClass}>
                   {f.options?.map((o) => <option key={o.value} value={o.value}>{t(o.labelKey)}</option>)}
                 </select>
+              ) : f.type === "file" ? (
+                <div>
+                  <input
+                    type="file"
+                    accept="image/*,application/pdf"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = () =>
+                        setForm((prev) => ({ ...prev, [f.key]: reader.result as string, [`${f.key}Name`]: file.name }));
+                      reader.readAsDataURL(file);
+                    }}
+                    className="w-full text-xs text-gray-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200"
+                  />
+                  {form[`${f.key}Name`] && <p className="text-[10px] text-gray-500 mt-1 truncate">📎 {form[`${f.key}Name`]}</p>}
+                </div>
               ) : (
                 <input
                   type={f.type}
@@ -386,7 +426,19 @@ function FinanceModuleTab({
                   <td className="py-2 px-3 text-black">{r.name}</td>
                   {config.fields.map((f) => (
                     <td key={f.key} className="py-2 px-3 text-black">
-                      {f.type === "select" ? optionLabel(t, config.fields, f.key, r[f.key] as string) : f.key === "amount" ? (Number(r.amount) || 0).toFixed(2) : (r[f.key] as string) || "—"}
+                      {f.type === "file" ? (
+                        (() => {
+                          const rec = r as unknown as Record<string, string>;
+                          const dataKey = f.key === "file" ? "fileData" : `${f.key}Data`;
+                          const nameKey = f.key === "file" ? "fileName" : `${f.key}Name`;
+                          const fileUrl = rec[dataKey];
+                          return fileUrl ? (
+                            <a href={fileUrl} download={rec[nameKey] || "attachment"} className="text-[#F33615] underline text-xs">
+                              📎 {rec[nameKey] || t("finAttachment")}
+                            </a>
+                          ) : "—";
+                        })()
+                      ) : f.type === "select" ? optionLabel(t, config.fields, f.key, (r as unknown as Record<string, string>)[f.key]) : f.key === "amount" ? (Number(r.amount) || 0).toFixed(2) : ((r as unknown as Record<string, string>)[f.key]) || "—"}
                     </td>
                   ))}
                   <td className="py-2 px-3">
@@ -404,7 +456,7 @@ function FinanceModuleTab({
 
 // ───────────────────────────── Overview (charts) ───────────────────────────
 
-function OverviewTab({ data, t }: { data: DataMap; t: (k: string) => string }) {
+function OverviewTab({ data, t }: { data: DataMap; t: (k: TranslationKeys) => string }) {
   const allIncomeAndOutcome = useMemo(() => [...data.income, ...data.expenses], [data.income, data.expenses]);
   const years = useMemo(() => {
     const ys = distinctYears(allIncomeAndOutcome);
@@ -508,7 +560,7 @@ function OverviewTab({ data, t }: { data: DataMap; t: (k: string) => string }) {
 
 // ───────────────────────────── Cash statement ──────────────────────────────
 
-function CashStatementTab({ data, t }: { data: DataMap; t: (k: string) => string }) {
+function CashStatementTab({ data, t }: { data: DataMap; t: (k: TranslationKeys) => string }) {
   const [year, setYear] = useState("");
   const [month, setMonth] = useState("");
 
@@ -597,7 +649,7 @@ function CashStatementTab({ data, t }: { data: DataMap; t: (k: string) => string
 
 // ───────────────────────────── Trial balance ───────────────────────────────
 
-function TrialBalanceTab({ data, t }: { data: DataMap; t: (k: string) => string }) {
+function TrialBalanceTab({ data, t }: { data: DataMap; t: (k: TranslationKeys) => string }) {
   const totalCredit = sumAmount(data.income);
   const totalDebit = sumAmount(data.expenses) + sumAmount(data.assets);
   const net = Math.round((totalCredit - totalDebit) * 100) / 100;

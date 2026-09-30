@@ -2,6 +2,9 @@ import { NextResponse, NextRequest } from "next/server";
 import db from "@/app/lib/db";
 import { isValidFinanceType, type FinanceRecord } from "@/app/lib/finance";
 
+// Matches the Shared Files upload limit: ~8MB raw file, ~1.4x for base64 overhead.
+const MAX_FILE_DATA_LENGTH = 8 * 1024 * 1024 * 1.4;
+
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ type: string }> }) {
   try {
     const { type } = await params;
@@ -22,6 +25,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ typ
         ref: d.ref || "",
         note: d.note || "",
         createdAt: d.createdAt || "",
+        endDate: d.endDate || "",
+        paymentDate: d.paymentDate || "",
+        fileData: d.fileData || "",
+        fileName: d.fileName || "",
+        bankGuaranteeData: d.bankGuaranteeData || "",
+        bankGuaranteeName: d.bankGuaranteeName || "",
       });
     });
     // Newest first.
@@ -45,6 +54,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ typ
     if (!body.date) {
       return NextResponse.json({ message: "Date is required" }, { status: 400 });
     }
+    if (body.fileData && String(body.fileData).length > MAX_FILE_DATA_LENGTH) {
+      return NextResponse.json({ message: "Attachment is too large" }, { status: 400 });
+    }
+    if (body.bankGuaranteeData && String(body.bankGuaranteeData).length > MAX_FILE_DATA_LENGTH) {
+      return NextResponse.json({ message: "Bank guarantee attachment is too large" }, { status: 400 });
+    }
     const record = {
       name: String(body.name).trim(),
       amount: Number(body.amount) || 0,
@@ -54,6 +69,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ typ
       ref: body.ref ? String(body.ref) : "",
       note: body.note ? String(body.note) : "",
       createdAt: new Date().toISOString(),
+      endDate: body.endDate ? String(body.endDate) : "",
+      paymentDate: body.paymentDate ? String(body.paymentDate) : "",
+      fileData: body.fileData ? String(body.fileData) : "",
+      fileName: body.fileName ? String(body.fileName) : "",
+      bankGuaranteeData: body.bankGuaranteeData ? String(body.bankGuaranteeData) : "",
+      bankGuaranteeName: body.bankGuaranteeName ? String(body.bankGuaranteeName) : "",
     };
     const ref = await db.ref(`finance/${type}`).push(record);
     return NextResponse.json({ id: ref.key, ...record }, { status: 201 });
