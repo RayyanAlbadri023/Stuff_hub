@@ -223,8 +223,18 @@ export const translations = {
     myContractDesc: "View your employment contract details",
     employeeProfileTitle: "Employee Profile",
     personalInfo: "Personal Info",
+    nationalId: "National ID (Civil No.)",
+    nationalIdExpiry: "National ID Expiry Date",
+    dateOfBirth: "Date of Birth",
     saveChanges: "Save Changes",
     changesSaved: "Changes saved ✅",
+
+    // ── Expiry alerts (national ID / contract) ───────────────────────────────
+    alertNationalIdExpired: "Your National ID has expired. Please renew it and update it in the system as soon as possible.",
+    alertNationalIdExpiringSoon: "Your National ID will expire soon. Please renew it in time.",
+    alertContractExpired: "Your employment contract has ended. Please contact HR.",
+    alertContractExpiringSoon: "Your employment contract is ending soon. Please contact HR.",
+    expiryDateLabel: "Expiry date",
 
     // ── My Documents (expatriate self-service) ──────────────────────────────
     myDocumentsTitle: "My Documents",
@@ -763,8 +773,18 @@ export const translations = {
     myContractDesc: "عرض تفاصيل عقد عملك",
     employeeProfileTitle: "ملف الموظف",
     personalInfo: "المعلومات الشخصية",
+    nationalId: "الرقم المدني",
+    nationalIdExpiry: "تاريخ انتهاء الرقم المدني",
+    dateOfBirth: "تاريخ الميلاد",
     saveChanges: "حفظ التغييرات",
     changesSaved: "تم حفظ التغييرات ✅",
+
+    // ── تنبيهات الانتهاء (البطاقة الشخصية / العقد) ───────────────────────────
+    alertNationalIdExpired: "انتهت صلاحية بطاقتك الشخصية (الرقم المدني). يرجى تجديدها وتحديثها في النظام في أقرب وقت.",
+    alertNationalIdExpiringSoon: "بطاقتك الشخصية (الرقم المدني) على وشك الانتهاء. يرجى تجديدها في الوقت المناسب.",
+    alertContractExpired: "انتهت مدة عقد عملك. يرجى التواصل مع الموارد البشرية.",
+    alertContractExpiringSoon: "عقد عملك على وشك الانتهاء قريبًا. يرجى التواصل مع الموارد البشرية.",
+    expiryDateLabel: "تاريخ الانتهاء",
 
     // ── وثائقي (خاص بالموظفين المقيمين) ─────────────────────────────────────
     myDocumentsTitle: "الوثائق",

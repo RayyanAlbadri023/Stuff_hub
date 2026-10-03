@@ -52,6 +52,9 @@ interface EmployeeDetail {
   residencyExpiry?: string;
   passportNumber?: string;
   passportExpiry?: string;
+  nationalId?: string;
+  nationalIdExpiry?: string;
+  dateOfBirth?: string;
   joinDate?: string;
   contractType?: string;
   contractStart?: string;
@@ -172,6 +175,9 @@ function EmployeeProfile() {
         residencyExpiry: employee.residencyExpiry ?? "",
         passportNumber: employee.passportNumber ?? "",
         passportExpiry: employee.passportExpiry ?? "",
+        nationalId: employee.nationalId ?? "",
+        nationalIdExpiry: employee.nationalIdExpiry ?? "",
+        dateOfBirth: employee.dateOfBirth ?? "",
         joinDate: employee.joinDate ?? "",
         contractType: employee.contractType ?? "permanent",
         contractStart: employee.contractStart ?? "",
@@ -293,6 +299,18 @@ function EmployeeProfile() {
                       <option key={c.value} value={c.value}>{lang === "ar" ? c.ar : c.en}</option>
                     ))}
                   </select>
+                </div>
+                <div>
+                  <label className={labelClass}>{t("dateOfBirth")}</label>
+                  <input type="date" value={employee.dateOfBirth ?? ""} onChange={(e) => update({ dateOfBirth: e.target.value })} className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>{t("nationalId")}</label>
+                  <input value={employee.nationalId ?? ""} onChange={(e) => update({ nationalId: e.target.value })} className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>{t("nationalIdExpiry")}</label>
+                  <input type="date" value={employee.nationalIdExpiry ?? ""} onChange={(e) => update({ nationalIdExpiry: e.target.value })} className={inputClass} />
                 </div>
               </div>
             </div>

@@ -9,6 +9,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       email, role, baseSalary, allowance, phoneAllowance, transportationAllowance, otherAllowance,
       nationality, countryName, insuranceNumber,
       workPermitNumber, workPermitExpiry, residencyNumber, residencyExpiry, passportNumber, passportExpiry,
+      nationalId, nationalIdExpiry, dateOfBirth,
       joinDate,
       contractType, contractStart, contractEnd, contractFile, contractFileName,
       residencyCardFile, residencyCardFileName, workPermitFile, workPermitFileName,
@@ -35,10 +36,22 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (residencyExpiry !== undefined) updates.residencyExpiry = residencyExpiry;
     if (passportNumber !== undefined) updates.passportNumber = passportNumber;
     if (passportExpiry !== undefined) updates.passportExpiry = passportExpiry;
+    if (nationalId !== undefined) updates.nationalId = nationalId;
+    if (nationalIdExpiry !== undefined) {
+      updates.nationalIdExpiry = nationalIdExpiry;
+      // Renewing the date resets the alert cycle so the employee gets a fresh
+      // warning if the new date later approaches expiry, instead of staying
+      // silenced by whatever stage was recorded against the old date.
+      updates.nationalIdAlertStage = "";
+    }
+    if (dateOfBirth !== undefined) updates.dateOfBirth = dateOfBirth;
     if (joinDate !== undefined) updates.joinDate = joinDate;
     if (contractType !== undefined) updates.contractType = contractType === "fixed" ? "fixed" : "permanent";
     if (contractStart !== undefined) updates.contractStart = contractStart;
-    if (contractEnd !== undefined) updates.contractEnd = contractEnd;
+    if (contractEnd !== undefined) {
+      updates.contractEnd = contractEnd;
+      updates.contractAlertStage = "";
+    }
     if (contractFile !== undefined) updates.contractFile = contractFile;
     if (contractFileName !== undefined) updates.contractFileName = contractFileName;
     if (residencyCardFile !== undefined) updates.residencyCardFile = residencyCardFile;
@@ -74,6 +87,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       residencyExpiry: d.residencyExpiry ?? "",
       passportNumber: d.passportNumber ?? "",
       passportExpiry: d.passportExpiry ?? "",
+      nationalId: d.nationalId ?? "",
+      nationalIdExpiry: d.nationalIdExpiry ?? "",
+      dateOfBirth: d.dateOfBirth ?? "",
       joinDate: d.joinDate ?? "",
       contractType: d.contractType ?? "permanent",
       contractStart: d.contractStart ?? "",

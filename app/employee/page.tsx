@@ -1,16 +1,47 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/hooks/useAuth";
+import { useRequest } from "@/app/hooks/useRequest";
 import { useLang } from "@/app/context/LangContext";
 import LangToggle from "@/app/components/LangToggle";
+import { getDocStatus } from "@/app/lib/workPermit";
 
 export default function EmployeeDashboard() {
   const router = useRouter();
   const { user, loading, logout } = useAuth({ requiredRole: "employee" });
+  const { execute } = useRequest();
   const { t, isRTL } = useLang();
 
+  const [nationalIdExpiry, setNationalIdExpiry] = useState<string | undefined>();
+  const [contractEnd, setContractEnd] = useState<string | undefined>();
+
+  useEffect(() => {
+    if (loading || !user?.id) return;
+    let cancelled = false;
+    (async () => {
+      const res = await execute(`/api/users/${user.id}`);
+      if (cancelled || !res || typeof res !== "object") return;
+      const d = res as { nationalIdExpiry?: string; contractEnd?: string };
+      setNationalIdExpiry(d.nationalIdExpiry);
+      setContractEnd(d.contractEnd);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, user?.id]);
+
   if (loading) return null;
+
+  const nationalIdStatus = getDocStatus(nationalIdExpiry);
+  const contractStatus = getDocStatus(contractEnd);
+  const withDate = (msg: string, date?: string) => (date ? `${msg} — ${t("expiryDateLabel")}: ${date}` : msg);
+  const alerts = [
+    nationalIdStatus === "expired" && withDate(t("alertNationalIdExpired"), nationalIdExpiry),
+    nationalIdStatus === "expiring_soon" && withDate(t("alertNationalIdExpiringSoon"), nationalIdExpiry),
+    contractStatus === "expired" && withDate(t("alertContractExpired"), contractEnd),
+    contractStatus === "expiring_soon" && withDate(t("alertContractExpiringSoon"), contractEnd),
+  ].filter((a): a is string => !!a);
 
   const cards = [
     { label: t("mySalaryTitle"),   desc: t("mySalaryDesc"),   path: "/salary" },
@@ -43,6 +74,16 @@ export default function EmployeeDashboard() {
             <button onClick={logout} className="px-3 sm:px-4 py-2 text-sm text-white rounded-full bg-gradient-to-r from-red-500 to-red-400">{t("logout")}</button>
           </div>
         </div>
+
+        {alerts.length > 0 && (
+          <div className="flex flex-col gap-2">
+            {alerts.map((msg, i) => (
+              <div key={i} className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl">
+                ⚠️ {msg}
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* CARDS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
